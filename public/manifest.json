@@ -1,0 +1,23 @@
+{
+  "name": "Kigali Swim Shop",
+  "short_name": "Swim Shop",
+  "description": "Your trusted swimming equipment store in Kigali, Rwanda",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0079e6",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/vite.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["shopping", "sports"],
+  "lang": "en",
+  "dir": "ltr"
+}
+
+
