@@ -24,6 +24,7 @@ const AdminDashboard = () => {
     sizes: [],
     colors: []
   })
+  const [imagePreview, setImagePreview] = useState(null)
 
   useEffect(() => {
     // Load orders from localStorage
@@ -72,6 +73,7 @@ const AdminDashboard = () => {
       sizes: [],
       colors: []
     })
+    setImagePreview(null)
     setShowProductModal(true)
   }
 
@@ -92,6 +94,7 @@ const AdminDashboard = () => {
       sizes: product.sizes || [],
       colors: product.colors || []
     })
+    setImagePreview(product.image || null)
     setShowProductModal(true)
   }
 
@@ -143,6 +146,7 @@ const AdminDashboard = () => {
       setProductList([...productList, newProduct])
       alert('Product added successfully!')
     }
+    setImagePreview(null)
     setShowProductModal(false)
   }
 
@@ -335,7 +339,13 @@ const AdminDashboard = () => {
                 {editingProduct ? 'Edit Product' : 'Add New Product'}
               </h2>
               <button
-                onClick={() => setShowProductModal(false)}
+                onClick={() => {
+                  setShowProductModal(false)
+                  setImagePreview(null)
+                  // Reset file input
+                  const fileInput = document.querySelector('input[type="file"]')
+                  if (fileInput) fileInput.value = ''
+                }}
                 className="text-gray-600 hover:text-gray-800 text-3xl font-bold leading-none w-8 h-8 flex items-center justify-center rounded hover:bg-gray-100"
               >
                 ×
@@ -473,34 +483,120 @@ const AdminDashboard = () => {
                 />
               </div>
 
-              {/* Image URL */}
+              {/* Image Upload */}
               <div>
-                <label className="block text-sm font-medium mb-2">Image URL</label>
-                <input
-                  type="text"
-                  value={productForm.image}
-                  onChange={(e) => setProductForm({ ...productForm, image: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  placeholder="/images/product.jpg or https://example.com/image.jpg"
-                />
-                {productForm.image && (
-                  <div className="mt-2">
-                    <img
-                      src={productForm.image}
-                      alt="Preview"
-                      className="w-32 h-32 object-cover rounded border"
-                      onError={(e) => {
-                        e.target.style.display = 'none'
+                <label className="block text-sm font-medium mb-2">Product Image</label>
+                <div className="space-y-3">
+                  {/* File Upload */}
+                  <div>
+                    <label className="block text-xs text-gray-600 mb-1">Upload from Computer</label>
+                    <div className="relative">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files[0]
+                          if (file) {
+                            // Validate file size (max 5MB)
+                            if (file.size > 5 * 1024 * 1024) {
+                              alert('Image size must be less than 5MB')
+                              e.target.value = ''
+                              return
+                            }
+                            // Validate file type
+                            if (!file.type.startsWith('image/')) {
+                              alert('Please select a valid image file')
+                              e.target.value = ''
+                              return
+                            }
+                            // Convert to base64
+                            const reader = new FileReader()
+                            reader.onloadend = () => {
+                              const base64String = reader.result
+                              setProductForm({ ...productForm, image: base64String })
+                              setImagePreview(base64String)
+                            }
+                            reader.onerror = () => {
+                              alert('Error reading file. Please try again.')
+                              e.target.value = ''
+                            }
+                            reader.readAsDataURL(file)
+                          }
+                        }}
+                        className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary-600 file:text-white hover:file:bg-primary-700 file:cursor-pointer cursor-pointer border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">Max file size: 5MB. Supported formats: JPG, PNG, GIF, WebP</p>
+                  </div>
+                  
+                  {/* OR Divider */}
+                  <div className="flex items-center">
+                    <div className="flex-1 border-t border-gray-300"></div>
+                    <span className="px-3 text-sm text-gray-500">OR</span>
+                    <div className="flex-1 border-t border-gray-300"></div>
+                  </div>
+                  
+                  {/* URL Input */}
+                  <div>
+                    <label className="block text-xs text-gray-600 mb-1">Enter Image URL</label>
+                    <input
+                      type="text"
+                      value={productForm.image && !productForm.image.startsWith('data:') ? productForm.image : ''}
+                      onChange={(e) => {
+                        setProductForm({ ...productForm, image: e.target.value })
+                        setImagePreview(e.target.value)
                       }}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      placeholder="/images/product.jpg or https://example.com/image.jpg"
                     />
                   </div>
-                )}
+                  
+                  {/* Image Preview */}
+                  {(imagePreview || productForm.image) && (
+                    <div className="mt-3">
+                      <label className="block text-xs text-gray-600 mb-2">Preview</label>
+                      <div className="relative inline-block">
+                        <img
+                          src={imagePreview || productForm.image}
+                          alt="Product preview"
+                          className="w-48 h-48 object-cover rounded-lg border-2 border-gray-200"
+                          onError={(e) => {
+                            e.target.style.display = 'none'
+                            const errorDiv = e.target.nextSibling
+                            if (errorDiv) errorDiv.style.display = 'block'
+                          }}
+                        />
+                        <div className="hidden text-red-500 text-sm mt-2">Failed to load image</div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setProductForm({ ...productForm, image: '' })
+                            setImagePreview(null)
+                            // Reset file input
+                            const fileInput = document.querySelector('input[type="file"]')
+                            if (fileInput) fileInput.value = ''
+                          }}
+                          className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
+                          title="Remove image"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Action Buttons */}
               <div className="flex justify-end gap-4 pt-4 border-t">
                 <button
-                  onClick={() => setShowProductModal(false)}
+                  onClick={() => {
+                    setShowProductModal(false)
+                    setImagePreview(null)
+                    // Reset file input
+                    const fileInput = document.querySelector('input[type="file"]')
+                    if (fileInput) fileInput.value = ''
+                  }}
                   className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
                 >
                   Cancel
