@@ -152,13 +152,6 @@ Free delivery for orders over 50,000 RWF within Kigali.
 - [ ] Analytics integration
 - [ ] Backend API integration (Supabase/Firebase)
 
-## Deployment
-
-The project can be deployed to:
-- **Vercel**: `vercel deploy`
-- **Netlify**: Connect GitHub repo
-- **Any static hosting**: Build and upload `dist/` folder
-
 ## License
 
 Private project for Kigali Swim Shop
