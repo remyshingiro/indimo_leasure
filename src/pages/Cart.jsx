@@ -19,7 +19,9 @@ const Cart = () => {
     return (
       <div className="container mx-auto px-4 py-12">
         <div className="text-center">
-          <div className="text-6xl mb-4">🛒</div>
+          <div className="inline-flex h-20 w-20 items-center justify-center rounded-full bg-primary-50 text-4xl mb-4 shadow-soft-glow animate-float-slow">
+            🛒
+          </div>
           <h2 className="text-2xl font-bold mb-4">
             {language === 'en' ? 'Your cart is empty' : 'Gafuni yawe nta cyo irimo'}
           </h2>

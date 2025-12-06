@@ -59,7 +59,7 @@ const Products = () => {
     <div className="container mx-auto px-4 py-8">
       <div className="flex flex-col md:flex-row gap-8">
         {/* Filters Sidebar */}
-        <aside className={`${showFilters ? 'block' : 'hidden'} md:block w-full md:w-64 bg-white p-6 rounded-lg shadow-md h-fit sticky top-20`}>
+        <aside className={`${showFilters ? 'block' : 'hidden'} md:block w-full md:w-72 card-soft h-fit sticky top-24`}>
           <div className="flex items-center justify-between mb-4 md:hidden">
             <h2 className="text-xl font-bold">Filters</h2>
             <button onClick={() => setShowFilters(false)} className="text-gray-600">✕</button>
@@ -144,25 +144,25 @@ const Products = () => {
         {/* Products Grid */}
         <div className="flex-1">
           {/* Search and Filter Toggle */}
-          <div className="flex flex-col sm:flex-row gap-4 mb-6">
+          <div className="flex flex-col sm:flex-row gap-4 mb-6 animate-fade-in-up">
             <form onSubmit={handleSearch} className="flex-1 flex gap-2">
               <input
                 type="text"
                 name="search"
                 placeholder={language === 'en' ? 'Search products...' : 'Shakisha ibicuruzwa...'}
                 defaultValue={searchQuery}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="flex-1 px-4 py-2 border border-gray-200 rounded-xl bg-white/80 shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-400"
               />
               <button
                 type="submit"
-                className="bg-primary-600 hover:bg-primary-700 text-white px-6 py-2 rounded-lg transition"
+                className="btn-primary"
               >
                 {language === 'en' ? 'Search' : 'Shakisha'}
               </button>
             </form>
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className="md:hidden bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded-lg"
+              className="md:hidden bg-white/90 border border-gray-200 hover:border-primary-300 hover:bg-primary-50 text-gray-800 px-4 py-2 rounded-xl shadow-sm transition"
             >
               {language === 'en' ? 'Filters' : 'Amashyirahamwe'}
             </button>
@@ -183,10 +183,11 @@ const Products = () => {
                 <Link
                   key={product.id}
                   to={`/products/${product.slug}`}
-                  className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition"
+                  className="card-soft overflow-hidden transition-transform duration-300 hover:-translate-y-2 hover:shadow-glow group"
                 >
-                  <div className="aspect-square bg-gray-200 flex items-center justify-center">
-                    <span className="text-6xl">🏊</span>
+                  <div className="relative aspect-square bg-gradient-to-br from-primary-100 via-sky-100 to-accent-100 flex items-center justify-center">
+                    <div className="absolute inset-0 opacity-40 bg-[radial-gradient(circle_at_top,_#ffffff,_transparent_60%)]" />
+                    <span className="relative text-6xl group-hover:scale-110 transition-transform duration-300">🏊</span>
                   </div>
                   <div className="p-4">
                     <h3 className="font-semibold text-gray-800 mb-2 line-clamp-2">

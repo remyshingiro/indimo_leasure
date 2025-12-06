@@ -1,5 +1,5 @@
 const WhatsAppButton = () => {
-  const phoneNumber = '+250788123456' // Replace with actual WhatsApp Business number
+  const phoneNumber = '+250784154697' // Replace with actual WhatsApp Business number
   const message = encodeURIComponent('Hello! I need help with my order.')
 
   return (
@@ -18,5 +18,6 @@ const WhatsAppButton = () => {
 }
 
 export default WhatsAppButton
+
 
 

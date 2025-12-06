@@ -43,9 +43,9 @@ const ProductDetail = () => {
     <div className="container mx-auto px-4 py-8">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
         {/* Product Images */}
-        <div>
-          <div className="aspect-square bg-gray-200 rounded-lg mb-4 flex items-center justify-center">
-            <span className="text-9xl">🏊</span>
+        <div className="animate-fade-in-up">
+          <div className="aspect-square rounded-3xl mb-4 bg-gradient-to-br from-primary-100 via-sky-100 to-accent-100 flex items-center justify-center shadow-soft-glow">
+            <span className="text-9xl animate-float-slow">🏊</span>
           </div>
           {product.images && product.images.length > 1 && (
             <div className="grid grid-cols-4 gap-2">
@@ -53,7 +53,7 @@ const ProductDetail = () => {
                 <button
                   key={index}
                   onClick={() => setActiveImage(index)}
-                  className={`aspect-square bg-gray-200 rounded border-2 ${
+                  className={`aspect-square bg-gray-100 rounded-2xl border-2 transition-all ${
                     activeImage === index ? 'border-primary-600' : 'border-transparent'
                   }`}
                 >
@@ -65,11 +65,13 @@ const ProductDetail = () => {
         </div>
 
         {/* Product Info */}
-        <div>
-          <h1 className="text-3xl font-bold mb-4 text-gray-800">
+        <div className="space-y-4 animate-fade-in-up-delayed">
+          <h1 className="text-3xl md:text-4xl font-bold mb-2 text-gray-900 tracking-tight">
             {language === 'en' ? product.name : product.nameRw}
           </h1>
-          <p className="text-gray-600 mb-4">{product.brand}</p>
+          <p className="inline-flex items-center px-3 py-1 rounded-full bg-primary-50 text-primary-700 text-xs font-semibold mb-2">
+            {product.brand}
+          </p>
           
           {product.rating && (
             <div className="flex items-center mb-4">
