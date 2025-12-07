@@ -89,17 +89,25 @@ const Header = () => {
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link to="/" className="flex items-center space-x-2 group flex-shrink-0">
-            <span className="text-2xl animate-float-slow">🏊</span>
+          <Link 
+            to="/" 
+            className="flex items-center space-x-2 group flex-shrink-0"
+            aria-label={language === 'en' ? 'Kigali Swim Shop Home' : 'Ahabanza Kigali Swim Shop'}
+          >
+            <span className="text-2xl animate-float-slow" aria-hidden="true">🏊</span>
             <span className="text-xl font-bold text-primary-600 tracking-tight group-hover:text-primary-700 transition-colors">
               {language === 'en' ? 'Kigali Swim Shop' : 'Ubwoba bw\'amazi Kigali'}
             </span>
           </Link>
 
-          {/* Search Bar - Desktop */}
+            {/* Search Bar - Desktop */}
           <div className="hidden md:block flex-1 max-w-2xl mx-8" ref={searchRef}>
-            <form onSubmit={handleSearch} className="relative">
+            <form onSubmit={handleSearch} className="relative" role="search">
+              <label htmlFor="search-input" className="sr-only">
+                {language === 'en' ? 'Search products' : 'Shakisha ibicuruzwa'}
+              </label>
               <input
+                id="search-input"
                 type="text"
                 value={searchQuery}
                 onChange={(e) => {
@@ -109,6 +117,10 @@ const Header = () => {
                 onFocus={() => setIsSearchOpen(true)}
                 placeholder={language === 'en' ? 'Search products...' : 'Shakisha ibicuruzwa...'}
                 className="w-full px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                aria-label={language === 'en' ? 'Search products' : 'Shakisha ibicuruzwa'}
+                aria-autocomplete="list"
+                aria-expanded={isSearchOpen && searchResults.length > 0}
+                aria-controls="search-results"
               />
               <svg
                 className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400"
@@ -121,7 +133,12 @@ const Header = () => {
               
               {/* Search Results Dropdown */}
               {isSearchOpen && searchResults.length > 0 && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-96 overflow-y-auto z-50">
+                <div 
+                  id="search-results"
+                  className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-96 overflow-y-auto z-50"
+                  role="listbox"
+                  aria-label={language === 'en' ? 'Search results' : 'Ibyabonetse'}
+                >
                   {searchResults.map((product) => (
                     <Link
                       key={product.id}
@@ -131,6 +148,8 @@ const Header = () => {
                         setSearchQuery('')
                       }}
                       className="flex items-center p-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
+                      role="option"
+                      aria-label={language === 'en' ? product.name : product.nameRw}
                     >
                       {product.image ? (
                         <img
@@ -370,12 +389,16 @@ const Header = () => {
             <Link
               to="/cart"
               className="relative p-2 text-gray-700 hover:text-primary-600 transition-transform hover:-translate-y-0.5"
+              aria-label={language === 'en' ? `Shopping cart with ${itemCount} items` : `Gafuni ifite ibintu ${itemCount}`}
             >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
               </svg>
               {itemCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-accent-500 text-white text-[10px] rounded-full w-5 h-5 flex items-center justify-center shadow-soft-glow animate-scale-in">
+                <span 
+                  className="absolute -top-1 -right-1 bg-accent-500 text-white text-[10px] rounded-full w-5 h-5 flex items-center justify-center shadow-soft-glow animate-scale-in"
+                  aria-label={`${itemCount} ${language === 'en' ? 'items in cart' : 'ibintu mu gafuni'}`}
+                >
                   {itemCount}
                 </span>
               )}

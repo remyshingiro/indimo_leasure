@@ -3,6 +3,8 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import useAuthStore from '../stores/authStore'
 import useLanguageStore from '../stores/languageStore'
+import { sanitizeFormData, validateEmail, validatePhone } from '../utils/security'
+import { errorHandler } from '../utils/errorHandler'
 
 const SignUp = () => {
   const navigate = useNavigate()
@@ -19,10 +21,35 @@ const SignUp = () => {
     setLoading(true)
     
     try {
-      await signUp(data)
-      navigate('/profile')
+      // Sanitize form data
+      const sanitized = sanitizeFormData(data)
+      
+      // Additional validation
+      if (!validateEmail(sanitized.email)) {
+        setError(language === 'en' ? 'Invalid email address' : 'Imeri ntabwo ari yo')
+        setLoading(false)
+        return
+      }
+      
+      if (!validatePhone(sanitized.phone)) {
+        setError(language === 'en' ? 'Invalid phone number format' : 'Numero ya telefoni ntabwo ari yo')
+        setLoading(false)
+        return
+      }
+      
+      if (sanitized.password.length < 6) {
+        setError(language === 'en' ? 'Password must be at least 6 characters' : 'Ijambo ry\'ibanga rikwiye kuba rigufi cyane cyane 6')
+        setLoading(false)
+        return
+      }
+      
+      await errorHandler.handleAsync(async () => {
+        await signUp(sanitized)
+        navigate('/profile')
+      }, { context: 'signUp' })
     } catch (err) {
-      setError(err.message || 'Failed to create account. Please try again.')
+      const friendlyMessage = errorHandler.getUserFriendlyMessage(err)
+      setError(err.message || friendlyMessage || (language === 'en' ? 'Failed to create account. Please try again.' : 'Ntibyashoboye kurema konti. Nyamuneka gerageza nanone.'))
     } finally {
       setLoading(false)
     }

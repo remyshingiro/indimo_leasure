@@ -3,6 +3,8 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import useAuthStore from '../stores/authStore'
 import useLanguageStore from '../stores/languageStore'
+import { sanitizeInput } from '../utils/security'
+import { errorHandler } from '../utils/errorHandler'
 
 const SignIn = () => {
   const navigate = useNavigate()
@@ -18,10 +20,16 @@ const SignIn = () => {
     setLoading(true)
     
     try {
-      await signIn(data.emailOrPhone, data.password)
-      navigate('/profile')
+      // Sanitize input
+      const sanitizedEmailOrPhone = sanitizeInput(data.emailOrPhone)
+      
+      await errorHandler.handleAsync(async () => {
+        await signIn(sanitizedEmailOrPhone, data.password)
+        navigate('/profile')
+      }, { context: 'signIn' })
     } catch (err) {
-      setError(err.message || 'Invalid email/phone or password. Please try again.')
+      const friendlyMessage = errorHandler.getUserFriendlyMessage(err)
+      setError(err.message || friendlyMessage || (language === 'en' ? 'Invalid email/phone or password. Please try again.' : 'Imeri cyangwa telefoni ntabwo ari yo cyangwa ijambo ry\'ibanga. Nyamuneka gerageza nanone.'))
     } finally {
       setLoading(false)
     }

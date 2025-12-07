@@ -14,7 +14,15 @@ const Profile = () => {
   const language = useLanguageStore((state) => state.language)
   
   const [editing, setEditing] = useState(false)
-  const orders = getUserOrders()
+  const [orders, setOrders] = useState([])
+  
+  useEffect(() => {
+    const loadOrders = async () => {
+      const userOrders = await getUserOrders()
+      setOrders(userOrders)
+    }
+    loadOrders()
+  }, [getUserOrders])
 
   const { register, handleSubmit, formState: { errors } } = useForm({
     defaultValues: user || {}
