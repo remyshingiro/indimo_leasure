@@ -1,13 +1,22 @@
 import { useState, useEffect } from 'react'
-import { products, categories } from '../../data/products'
+import useProductStore from '../../stores/productStore'
+import useCategoryStore from '../../stores/categoryStore'
+import useAnalyticsStore from '../../stores/analyticsStore'
 import { formatRWF } from '../../utils/currency'
 
 const AdminDashboard = () => {
   const [orders, setOrders] = useState([])
   const [activeTab, setActiveTab] = useState('orders')
-  const [productList, setProductList] = useState(products)
   const [showProductModal, setShowProductModal] = useState(false)
+  const [showCategoryModal, setShowCategoryModal] = useState(false)
   const [editingProduct, setEditingProduct] = useState(null)
+  const [editingCategory, setEditingCategory] = useState(null)
+  
+  const products = useProductStore((state) => state.products)
+  const setProducts = useProductStore((state) => state.setProducts)
+  const categories = useCategoryStore((state) => state.categories)
+  const setCategories = useCategoryStore((state) => state.setCategories)
+  const analyticsSummary = useAnalyticsStore((state) => state.getSummary)()
   
   const [productForm, setProductForm] = useState({
     name: '',
@@ -24,29 +33,20 @@ const AdminDashboard = () => {
     sizes: [],
     colors: []
   })
+  const [categoryForm, setCategoryForm] = useState({
+    name: '',
+    nameRw: '',
+    image: '',
+    icon: ''
+  })
   const [imagePreview, setImagePreview] = useState(null)
+  const [categoryImagePreview, setCategoryImagePreview] = useState(null)
 
   useEffect(() => {
     // Load orders from localStorage
     const storedOrders = JSON.parse(localStorage.getItem('orders') || '[]')
     setOrders(storedOrders)
-
-    // Load products from localStorage if exists, otherwise use default
-    const storedProducts = JSON.parse(localStorage.getItem('adminProducts') || 'null')
-    if (storedProducts && storedProducts.length > 0) {
-      setProductList(storedProducts)
-    } else {
-      // Initialize with default products
-      localStorage.setItem('adminProducts', JSON.stringify(products))
-    }
   }, [])
-
-  // Save products to localStorage whenever productList changes
-  useEffect(() => {
-    if (productList.length > 0) {
-      localStorage.setItem('adminProducts', JSON.stringify(productList))
-    }
-  }, [productList])
 
   const updateOrderStatus = (orderId, newStatus) => {
     const updatedOrders = orders.map(order =>
@@ -100,8 +100,8 @@ const AdminDashboard = () => {
 
   const handleDeleteProduct = (productId) => {
     if (window.confirm('Are you sure you want to delete this product? This action cannot be undone.')) {
-      const updatedProducts = productList.filter(p => p.id !== productId)
-      setProductList(updatedProducts)
+      const updatedProducts = products.filter(p => p.id !== productId)
+      setProducts(updatedProducts)
       alert('Product deleted successfully!')
     }
   }
@@ -115,19 +115,18 @@ const AdminDashboard = () => {
 
     if (editingProduct) {
       // Update existing product
-      const updatedProducts = productList.map(p =>
-        p.id === editingProduct.id
-          ? {
-              ...editingProduct,
-              ...productForm,
-              price: Number(productForm.price),
-              originalPrice: Number(productForm.originalPrice || productForm.price),
-              stock: Number(productForm.stock),
-              inStock: Number(productForm.stock) > 0
-            }
-          : p
+      const updatedProduct = {
+        ...editingProduct,
+        ...productForm,
+        price: Number(productForm.price),
+        originalPrice: Number(productForm.originalPrice || productForm.price),
+        stock: Number(productForm.stock),
+        inStock: Number(productForm.stock) > 0
+      }
+      const updatedProducts = products.map(p =>
+        p.id === editingProduct.id ? updatedProduct : p
       )
-      setProductList(updatedProducts)
+      setProducts(updatedProducts)
       alert('Product updated successfully!')
     } else {
       // Add new product
@@ -143,11 +142,61 @@ const AdminDashboard = () => {
         slug: productForm.slug || productForm.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
         images: productForm.image ? [productForm.image] : []
       }
-      setProductList([...productList, newProduct])
+      setProducts([...products, newProduct])
       alert('Product added successfully!')
     }
     setImagePreview(null)
     setShowProductModal(false)
+  }
+
+  const handleAddCategory = () => {
+    setEditingCategory(null)
+    setCategoryForm({
+      name: '',
+      nameRw: '',
+      image: '',
+      icon: ''
+    })
+    setCategoryImagePreview(null)
+    setShowCategoryModal(true)
+  }
+
+  const handleEditCategory = (category) => {
+    setEditingCategory(category)
+    setCategoryForm({
+      name: category.name,
+      nameRw: category.nameRw || '',
+      image: category.image || '',
+      icon: category.icon || ''
+    })
+    setCategoryImagePreview(category.image || null)
+    setShowCategoryModal(true)
+  }
+
+  const handleSaveCategory = () => {
+    if (!categoryForm.name) {
+      alert('Please fill in category name')
+      return
+    }
+
+    if (editingCategory) {
+      const updatedCategories = categories.map(cat =>
+        cat.id === editingCategory.id
+          ? { ...editingCategory, ...categoryForm }
+          : cat
+      )
+      setCategories(updatedCategories)
+      alert('Category updated successfully!')
+    } else {
+      const newCategory = {
+        id: categoryForm.name.toLowerCase().replace(/\s+/g, '-'),
+        ...categoryForm
+      }
+      setCategories([...categories, newCategory])
+      alert('Category added successfully!')
+    }
+    setCategoryImagePreview(null)
+    setShowCategoryModal(false)
   }
 
   const totalRevenue = orders.reduce((sum, order) => sum + order.total, 0)
@@ -181,10 +230,10 @@ const AdminDashboard = () => {
       {/* Tabs */}
       <div className="bg-white rounded-lg shadow-md">
         <div className="border-b">
-          <div className="flex">
+          <div className="flex overflow-x-auto">
             <button
               onClick={() => setActiveTab('orders')}
-              className={`px-6 py-4 font-semibold ${
+              className={`px-6 py-4 font-semibold whitespace-nowrap ${
                 activeTab === 'orders'
                   ? 'border-b-2 border-primary-600 text-primary-600'
                   : 'text-gray-600 hover:text-gray-800'
@@ -194,13 +243,33 @@ const AdminDashboard = () => {
             </button>
             <button
               onClick={() => setActiveTab('products')}
-              className={`px-6 py-4 font-semibold ${
+              className={`px-6 py-4 font-semibold whitespace-nowrap ${
                 activeTab === 'products'
                   ? 'border-b-2 border-primary-600 text-primary-600'
                   : 'text-gray-600 hover:text-gray-800'
               }`}
             >
               Products
+            </button>
+            <button
+              onClick={() => setActiveTab('categories')}
+              className={`px-6 py-4 font-semibold whitespace-nowrap ${
+                activeTab === 'categories'
+                  ? 'border-b-2 border-primary-600 text-primary-600'
+                  : 'text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              Categories
+            </button>
+            <button
+              onClick={() => setActiveTab('analytics')}
+              className={`px-6 py-4 font-semibold whitespace-nowrap ${
+                activeTab === 'analytics'
+                  ? 'border-b-2 border-primary-600 text-primary-600'
+                  : 'text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              Analytics
             </button>
           </div>
         </div>
@@ -271,7 +340,7 @@ const AdminDashboard = () => {
         {activeTab === 'products' && (
           <div className="p-6">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold">Products ({productList.length})</h2>
+              <h2 className="text-xl font-bold">Products ({products.length})</h2>
               <button
                 onClick={handleAddProduct}
                 className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg transition-colors"
@@ -292,7 +361,7 @@ const AdminDashboard = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {productList.map((product) => (
+                  {products.map((product) => (
                     <tr key={product.id} className="border-b hover:bg-gray-50">
                       <td className="py-3 px-4">{product.id}</td>
                       <td className="py-3 px-4 font-semibold">{product.name}</td>
@@ -328,6 +397,120 @@ const AdminDashboard = () => {
             </div>
           </div>
         )}
+
+        {/* Categories Tab */}
+        {activeTab === 'categories' && (
+          <div className="p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold">Categories ({categories.length})</h2>
+              <button
+                onClick={handleAddCategory}
+                className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg transition-colors"
+              >
+                + Add Category
+              </button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {categories.map((category) => (
+                <div key={category.id} className="border rounded-lg p-4">
+                  <div className="flex items-center space-x-4 mb-4">
+                    {category.image ? (
+                      <img
+                        src={category.image}
+                        alt={category.name}
+                        className="w-16 h-16 object-cover rounded"
+                        onError={(e) => {
+                          e.target.style.display = 'none'
+                          e.target.nextSibling.style.display = 'flex'
+                        }}
+                      />
+                    ) : null}
+                    <div className={`flex items-center justify-center w-16 h-16 bg-primary-50 rounded ${category.image ? 'hidden' : ''}`}>
+                      <span className="text-3xl">{category.icon}</span>
+                    </div>
+                    <div>
+                      <h3 className="font-semibold">{category.name}</h3>
+                      <p className="text-sm text-gray-600">{category.nameRw}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleEditCategory(category)}
+                    className="w-full bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg transition-colors"
+                  >
+                    Edit
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Analytics Tab */}
+        {activeTab === 'analytics' && (
+          <div className="p-6">
+            <h2 className="text-xl font-bold mb-6">Traffic Analytics</h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+              <div className="bg-blue-50 rounded-lg p-4">
+                <h3 className="text-sm text-gray-600 mb-1">Today's Views</h3>
+                <p className="text-2xl font-bold text-blue-600">{analyticsSummary.todayViews}</p>
+              </div>
+              <div className="bg-purple-50 rounded-lg p-4">
+                <h3 className="text-sm text-gray-600 mb-1">This Week</h3>
+                <p className="text-2xl font-bold text-purple-600">{analyticsSummary.weekViews}</p>
+              </div>
+              <div className="bg-green-50 rounded-lg p-4">
+                <h3 className="text-sm text-gray-600 mb-1">Total Views</h3>
+                <p className="text-2xl font-bold text-green-600">{analyticsSummary.totalViews}</p>
+              </div>
+              <div className="bg-orange-50 rounded-lg p-4">
+                <h3 className="text-sm text-gray-600 mb-1">Active Sessions</h3>
+                <p className="text-2xl font-bold text-orange-600">{analyticsSummary.activeSessions}</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Most Viewed Pages */}
+              <div className="bg-white border rounded-lg p-4">
+                <h3 className="font-semibold mb-4">Most Viewed Pages</h3>
+                <div className="space-y-2">
+                  {analyticsSummary.mostViewedPages.length > 0 ? (
+                    analyticsSummary.mostViewedPages.map((page, idx) => (
+                      <div key={idx} className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                        <span className="text-sm">{page.page}</span>
+                        <span className="font-semibold text-primary-600">{page.count}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-gray-500 text-sm">No data yet</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Popular Products */}
+              <div className="bg-white border rounded-lg p-4">
+                <h3 className="font-semibold mb-4">Popular Products</h3>
+                <div className="space-y-2">
+                  {analyticsSummary.popularProducts.length > 0 ? (
+                    analyticsSummary.popularProducts.map((item) => {
+                      const product = products.find(p => p.id === item.productId)
+                      return product ? (
+                        <div key={item.productId} className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                          <span className="text-sm">{product.name}</span>
+                          <span className="font-semibold text-primary-600">
+                            {item.views} views, {item.clicks} clicks
+                          </span>
+                        </div>
+                      ) : null
+                    })
+                  ) : (
+                    <p className="text-gray-500 text-sm">No data yet</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Product Modal */}
@@ -342,7 +525,6 @@ const AdminDashboard = () => {
                 onClick={() => {
                   setShowProductModal(false)
                   setImagePreview(null)
-                  // Reset file input
                   const fileInput = document.querySelector('input[type="file"]')
                   if (fileInput) fileInput.value = ''
                 }}
@@ -497,23 +679,20 @@ const AdminDashboard = () => {
                         onChange={(e) => {
                           const file = e.target.files[0]
                           if (file) {
-                            // Validate file size (max 5MB)
                             if (file.size > 5 * 1024 * 1024) {
                               alert('Image size must be less than 5MB')
                               e.target.value = ''
                               return
                             }
-                            // Validate file type
                             if (!file.type.startsWith('image/')) {
                               alert('Please select a valid image file')
                               e.target.value = ''
                               return
                             }
-                            // Convert to base64
                             const reader = new FileReader()
                             reader.onloadend = () => {
                               const base64String = reader.result
-                              setProductForm({ ...productForm, image: base64String })
+                              setProductForm(prev => ({ ...prev, image: base64String }))
                               setImagePreview(base64String)
                             }
                             reader.onerror = () => {
@@ -543,8 +722,16 @@ const AdminDashboard = () => {
                       type="text"
                       value={productForm.image && !productForm.image.startsWith('data:') ? productForm.image : ''}
                       onChange={(e) => {
-                        setProductForm({ ...productForm, image: e.target.value })
-                        setImagePreview(e.target.value)
+                        const url = e.target.value
+                        setProductForm(prev => ({ ...prev, image: url }))
+                        setImagePreview(url)
+                      }}
+                      onFocus={(e) => {
+                        if (productForm.image && productForm.image.startsWith('data:')) {
+                          setProductForm(prev => ({ ...prev, image: '' }))
+                          setImagePreview(null)
+                          e.target.value = ''
+                        }
                       }}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                       placeholder="/images/product.jpg or https://example.com/image.jpg"
@@ -570,9 +757,8 @@ const AdminDashboard = () => {
                         <button
                           type="button"
                           onClick={() => {
-                            setProductForm({ ...productForm, image: '' })
+                            setProductForm(prev => ({ ...prev, image: '' }))
                             setImagePreview(null)
-                            // Reset file input
                             const fileInput = document.querySelector('input[type="file"]')
                             if (fileInput) fileInput.value = ''
                           }}
@@ -593,7 +779,6 @@ const AdminDashboard = () => {
                   onClick={() => {
                     setShowProductModal(false)
                     setImagePreview(null)
-                    // Reset file input
                     const fileInput = document.querySelector('input[type="file"]')
                     if (fileInput) fileInput.value = ''
                   }}
@@ -612,11 +797,139 @@ const AdminDashboard = () => {
           </div>
         </div>
       )}
+
+      {/* Category Modal */}
+      {showCategoryModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-2xl w-full">
+            <div className="p-6 border-b flex justify-between items-center">
+              <h2 className="text-2xl font-bold">
+                {editingCategory ? 'Edit Category' : 'Add New Category'}
+              </h2>
+              <button
+                onClick={() => {
+                  setShowCategoryModal(false)
+                  setCategoryImagePreview(null)
+                }}
+                className="text-gray-600 hover:text-gray-800 text-3xl font-bold leading-none w-8 h-8 flex items-center justify-center rounded hover:bg-gray-100"
+              >
+                ×
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">Category Name (EN) <span className="text-red-500">*</span></label>
+                  <input
+                    type="text"
+                    value={categoryForm.name}
+                    onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Category Name (RW)</label>
+                  <input
+                    type="text"
+                    value={categoryForm.nameRw}
+                    onChange={(e) => setCategoryForm({ ...categoryForm, nameRw: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-2">Category Icon (Emoji)</label>
+                <input
+                  type="text"
+                  value={categoryForm.icon}
+                  onChange={(e) => setCategoryForm({ ...categoryForm, icon: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  placeholder="🏊"
+                />
+              </div>
+
+              {/* Image Upload for Category */}
+              <div>
+                <label className="block text-sm font-medium mb-2">Category Image</label>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs text-gray-600 mb-1">Upload from Computer</label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files[0]
+                        if (file) {
+                          if (file.size > 5 * 1024 * 1024) {
+                            alert('Image size must be less than 5MB')
+                            e.target.value = ''
+                            return
+                          }
+                          const reader = new FileReader()
+                          reader.onloadend = () => {
+                            setCategoryForm(prev => ({ ...prev, image: reader.result }))
+                            setCategoryImagePreview(reader.result)
+                          }
+                          reader.readAsDataURL(file)
+                        }
+                      }}
+                      className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary-600 file:text-white hover:file:bg-primary-700 file:cursor-pointer cursor-pointer border border-gray-300 rounded-lg"
+                    />
+                  </div>
+                  <div className="flex items-center">
+                    <div className="flex-1 border-t border-gray-300"></div>
+                    <span className="px-3 text-sm text-gray-500">OR</span>
+                    <div className="flex-1 border-t border-gray-300"></div>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-600 mb-1">Enter Image URL</label>
+                    <input
+                      type="text"
+                      value={categoryForm.image && !categoryForm.image.startsWith('data:') ? categoryForm.image : ''}
+                      onChange={(e) => {
+                        setCategoryForm(prev => ({ ...prev, image: e.target.value }))
+                        setCategoryImagePreview(e.target.value)
+                      }}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      placeholder="/images/category.jpg"
+                    />
+                  </div>
+                  {(categoryImagePreview || categoryForm.image) && (
+                    <div className="mt-3">
+                      <img
+                        src={categoryImagePreview || categoryForm.image}
+                        alt="Category preview"
+                        className="w-32 h-32 object-cover rounded-lg border-2 border-gray-200"
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-4 pt-4 border-t">
+                <button
+                  onClick={() => {
+                    setShowCategoryModal(false)
+                    setCategoryImagePreview(null)
+                  }}
+                  className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveCategory}
+                  className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                >
+                  {editingCategory ? 'Update Category' : 'Add Category'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
 
 export default AdminDashboard
-
-
-

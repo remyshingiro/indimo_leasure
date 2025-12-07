@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import useCartStore from '../stores/cartStore'
 import useLanguageStore from '../stores/languageStore'
+import useAuthStore from '../stores/authStore'
 import { formatRWF, formatRWFSimple } from '../utils/currency'
 import { DELIVERY_ZONES, getDeliveryFee } from '../utils/delivery'
 
@@ -12,6 +13,8 @@ const Checkout = () => {
   const clearCart = useCartStore((state) => state.clearCart)
   const getTotal = useCartStore((state) => state.getTotal)
   const language = useLanguageStore((state) => state.language)
+  const user = useAuthStore((state) => state.user)
+  const addOrderToUser = useAuthStore((state) => state.addOrderToUser)
   
   const [selectedZone, setSelectedZone] = useState('gasabo')
   const [paymentMethod, setPaymentMethod] = useState('mtn')
@@ -61,6 +64,11 @@ const Checkout = () => {
     const orders = JSON.parse(localStorage.getItem('orders') || '[]')
     orders.push(order)
     localStorage.setItem('orders', JSON.stringify(orders))
+
+    // Link order to user if logged in
+    if (user) {
+      addOrderToUser(order)
+    }
 
     clearCart()
     setOrderPlaced(true)

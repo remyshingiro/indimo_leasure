@@ -163,11 +163,11 @@ export const products = [
 ]
 
 export const categories = [
-  { id: 'caps', name: 'Swimming Caps', nameRw: 'Amakofiya y\'amazi', icon: '🏊' },
-  { id: 'goggles', name: 'Goggles', nameRw: 'Amadarubindi', icon: '🥽' },
-  { id: 'swimsuits', name: 'Swimsuits', nameRw: 'Impuzu z\'amazi', icon: '👙' },
-  { id: 'training', name: 'Training Equipment', nameRw: 'Ibikoresho by\'amazi', icon: '🏋️' },
-  { id: 'accessories', name: 'Accessories', nameRw: 'Ibindi bikoresho', icon: '🎒' }
+  { id: 'caps', name: 'Swimming Caps', nameRw: 'Amakofiya y\'amazi', icon: '🏊', image: '' },
+  { id: 'goggles', name: 'Goggles', nameRw: 'Amadarubindi', icon: '🥽', image: '' },
+  { id: 'swimsuits', name: 'Swimsuits', nameRw: 'Impuzu z\'amazi', icon: '👙', image: '' },
+  { id: 'training', name: 'Training Equipment', nameRw: 'Ibikoresho by\'amazi', icon: '🏋️', image: '' },
+  { id: 'accessories', name: 'Accessories', nameRw: 'Ibindi bikoresho', icon: '🎒', image: '' }
 ]
 
 export const getProductBySlug = (slug) => {

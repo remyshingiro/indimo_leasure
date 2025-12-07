@@ -4,6 +4,10 @@ import useLanguageStore from '../stores/languageStore'
 const Footer = () => {
   const language = useLanguageStore((state) => state.language)
 
+  const handleLinkClick = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   const translations = {
     en: {
       quickLinks: 'Quick Links',
@@ -56,22 +60,22 @@ const Footer = () => {
             <h4 className="font-semibold mb-4">{t.quickLinks}</h4>
             <ul className="space-y-2 text-gray-400">
               <li>
-                <Link to="/" className="hover:text-white transition">
+                <Link to="/" onClick={handleLinkClick} className="hover:text-white transition">
                   {language === 'en' ? 'Home' : 'Ahabanza'}
                 </Link>
               </li>
               <li>
-                <Link to="/products" className="hover:text-white transition">
+                <Link to="/products" onClick={handleLinkClick} className="hover:text-white transition">
                   {language === 'en' ? 'Products' : 'Ibicuruzwa'}
                 </Link>
               </li>
               <li>
-                <Link to="/about" className="hover:text-white transition">
+                <Link to="/about" onClick={handleLinkClick} className="hover:text-white transition">
                   {language === 'en' ? 'About Us' : 'Ibyerekeye'}
                 </Link>
               </li>
               <li>
-                <Link to="/contact" className="hover:text-white transition">
+                <Link to="/contact" onClick={handleLinkClick} className="hover:text-white transition">
                   {language === 'en' ? 'Contact' : 'Twandikire'}
                 </Link>
               </li>
@@ -83,22 +87,22 @@ const Footer = () => {
             <h4 className="font-semibold mb-4">{t.customerService}</h4>
             <ul className="space-y-2 text-gray-400">
               <li>
-                <Link to="/faq" className="hover:text-white transition">
+                <Link to="/faq" onClick={handleLinkClick} className="hover:text-white transition">
                   {language === 'en' ? 'FAQs' : 'Ibibazo'}
                 </Link>
               </li>
               <li>
-                <Link to="/policies/returns" className="hover:text-white transition">
+                <Link to="/policies/returns" onClick={handleLinkClick} className="hover:text-white transition">
                   {language === 'en' ? 'Returns & Exchanges' : 'Gusubiza'}
                 </Link>
               </li>
               <li>
-                <Link to="/policies/privacy" className="hover:text-white transition">
+                <Link to="/policies/privacy" onClick={handleLinkClick} className="hover:text-white transition">
                   {language === 'en' ? 'Privacy Policy' : 'Politiki y\'Ubwigenge'}
                 </Link>
               </li>
               <li>
-                <Link to="/policies/terms" className="hover:text-white transition">
+                <Link to="/policies/terms" onClick={handleLinkClick} className="hover:text-white transition">
                   {language === 'en' ? 'Terms & Conditions' : 'Amabwiriza'}
                 </Link>
               </li>

@@ -1,15 +1,25 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { getProductBySlug, products } from '../data/products'
 import useCartStore from '../stores/cartStore'
 import useLanguageStore from '../stores/languageStore'
+import useProductStore from '../stores/productStore'
+import useAnalyticsStore from '../stores/analyticsStore'
 import { formatRWF } from '../utils/currency'
 
 const ProductDetail = () => {
   const { slug } = useParams()
+  const getProductBySlug = useProductStore((state) => state.getProductBySlug)
+  const products = useProductStore((state) => state.products)
   const product = getProductBySlug(slug)
   const addItem = useCartStore((state) => state.addItem)
   const language = useLanguageStore((state) => state.language)
+  const trackProductView = useAnalyticsStore((state) => state.trackProductView)
+
+  useEffect(() => {
+    if (product) {
+      trackProductView(product.id)
+    }
+  }, [product, trackProductView])
   
   const [selectedSize, setSelectedSize] = useState(product?.sizes[0] || '')
   const [selectedColor, setSelectedColor] = useState(product?.colors[0] || '')
@@ -44,8 +54,21 @@ const ProductDetail = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
         {/* Product Images */}
         <div className="animate-fade-in-up">
-          <div className="aspect-square rounded-3xl mb-4 bg-gradient-to-br from-primary-100 via-sky-100 to-accent-100 flex items-center justify-center shadow-soft-glow">
-            <span className="text-9xl animate-float-slow">🏊</span>
+          <div className="aspect-square rounded-3xl mb-4 bg-gradient-to-br from-primary-100 via-sky-100 to-accent-100 overflow-hidden shadow-soft-glow">
+            {product.image ? (
+              <img
+                src={product.image}
+                alt={product.name}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  e.target.style.display = 'none'
+                  e.target.nextSibling.style.display = 'flex'
+                }}
+              />
+            ) : null}
+            <div className={`w-full h-full flex items-center justify-center ${product.image ? 'hidden' : ''}`}>
+              <span className="text-9xl animate-float-slow">🏊</span>
+            </div>
           </div>
           {product.images && product.images.length > 1 && (
             <div className="grid grid-cols-4 gap-2">
@@ -53,11 +76,24 @@ const ProductDetail = () => {
                 <button
                   key={index}
                   onClick={() => setActiveImage(index)}
-                  className={`aspect-square bg-gray-100 rounded-2xl border-2 transition-all ${
+                  className={`aspect-square bg-gray-100 rounded-2xl border-2 transition-all overflow-hidden ${
                     activeImage === index ? 'border-primary-600' : 'border-transparent'
                   }`}
                 >
-                  <span className="text-2xl">🏊</span>
+                  {img ? (
+                    <img
+                      src={img}
+                      alt={`${product.name} ${index + 1}`}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.target.style.display = 'none'
+                        e.target.nextSibling.style.display = 'flex'
+                      }}
+                    />
+                  ) : null}
+                  <div className={`w-full h-full flex items-center justify-center ${img ? 'hidden' : ''}`}>
+                    <span className="text-2xl">🏊</span>
+                  </div>
                 </button>
               ))}
             </div>
@@ -225,8 +261,21 @@ const ProductDetail = () => {
                 to={`/products/${p.slug}`}
                 className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition"
               >
-                <div className="aspect-square bg-gray-200 flex items-center justify-center">
-                  <span className="text-6xl">🏊</span>
+                <div className="aspect-square bg-gray-200 overflow-hidden">
+                  {p.image ? (
+                    <img
+                      src={p.image}
+                      alt={p.name}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.target.style.display = 'none'
+                        e.target.nextSibling.style.display = 'flex'
+                      }}
+                    />
+                  ) : null}
+                  <div className={`w-full h-full flex items-center justify-center ${p.image ? 'hidden' : ''}`}>
+                    <span className="text-6xl">🏊</span>
+                  </div>
                 </div>
                 <div className="p-4">
                   <h3 className="font-semibold text-gray-800 mb-2 line-clamp-2">

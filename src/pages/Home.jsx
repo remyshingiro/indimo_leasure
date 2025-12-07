@@ -1,10 +1,15 @@
 import { Link } from 'react-router-dom'
-import { categories, products } from '../data/products'
 import useLanguageStore from '../stores/languageStore'
+import useCategoryStore from '../stores/categoryStore'
+import useProductStore from '../stores/productStore'
+import useAnalyticsStore from '../stores/analyticsStore'
 import { formatRWF } from '../utils/currency'
 
 const Home = () => {
   const language = useLanguageStore((state) => state.language)
+  const categories = useCategoryStore((state) => state.categories)
+  const products = useProductStore((state) => state.products)
+  const trackProductClick = useAnalyticsStore((state) => state.trackProductClick)
 
   const featuredProducts = products.slice(0, 4)
   const testimonials = [
@@ -78,9 +83,26 @@ const Home = () => {
                 to={`/products?category=${category.id}`}
                 className="card-soft p-6 text-center transition-transform duration-300 hover:-translate-y-1 hover:shadow-glow group"
               >
-                <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary-50 text-2xl mb-3 group-hover:bg-primary-100 transition-colors">
-                  {category.icon}
-                </div>
+                {category.image ? (
+                  <div className="w-16 h-16 mx-auto mb-3 rounded-full overflow-hidden bg-primary-50 group-hover:bg-primary-100 transition-colors">
+                    <img
+                      src={category.image}
+                      alt={category.name}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.target.style.display = 'none'
+                        e.target.nextSibling.style.display = 'flex'
+                      }}
+                    />
+                    <div className="hidden w-full h-full items-center justify-center text-2xl">
+                      {category.icon}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary-50 text-2xl mb-3 group-hover:bg-primary-100 transition-colors">
+                    {category.icon}
+                  </div>
+                )}
                 <h3 className="font-semibold text-gray-800 group-hover:text-primary-600">
                   {language === 'en' ? category.name : category.nameRw}
                 </h3>
@@ -101,11 +123,25 @@ const Home = () => {
               <Link
                 key={product.id}
                 to={`/products/${product.slug}`}
+                onClick={() => trackProductClick(product.id)}
                 className="card-soft overflow-hidden transition-transform duration-300 hover:-translate-y-2 hover:shadow-glow group"
               >
-                <div className="relative aspect-square bg-gradient-to-br from-primary-100 via-sky-100 to-accent-100 flex items-center justify-center">
-                  <div className="absolute inset-0 opacity-40 bg-[radial-gradient(circle_at_top,_#ffffff,_transparent_60%)]" />
-                  <span className="relative text-6xl group-hover:scale-110 transition-transform duration-300">🏊</span>
+                <div className="relative aspect-square bg-gradient-to-br from-primary-100 via-sky-100 to-accent-100 overflow-hidden">
+                  {product.image ? (
+                    <img
+                      src={product.image}
+                      alt={product.name}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                      onError={(e) => {
+                        e.target.style.display = 'none'
+                        e.target.nextSibling.style.display = 'flex'
+                      }}
+                    />
+                  ) : null}
+                  <div className={`absolute inset-0 flex items-center justify-center ${product.image ? 'hidden' : ''}`}>
+                    <div className="absolute inset-0 opacity-40 bg-[radial-gradient(circle_at_top,_#ffffff,_transparent_60%)]" />
+                    <span className="relative text-6xl group-hover:scale-110 transition-transform duration-300">🏊</span>
+                  </div>
                 </div>
                 <div className="p-4">
                   <h3 className="font-semibold text-gray-800 mb-2 line-clamp-2">

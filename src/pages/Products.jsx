@@ -1,13 +1,19 @@
 import { useState, useMemo } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { products, categories } from '../data/products'
-import { searchProducts, getProductsByCategory } from '../data/products'
 import useLanguageStore from '../stores/languageStore'
+import useCategoryStore from '../stores/categoryStore'
+import useProductStore from '../stores/productStore'
+import useAnalyticsStore from '../stores/analyticsStore'
 import { formatRWF } from '../utils/currency'
 
 const Products = () => {
   const [searchParams, setSearchParams] = useSearchParams()
   const language = useLanguageStore((state) => state.language)
+  const categories = useCategoryStore((state) => state.categories)
+  const products = useProductStore((state) => state.products)
+  const getProductsByCategory = useProductStore((state) => state.getProductsByCategory)
+  const searchProducts = useProductStore((state) => state.searchProducts)
+  const trackProductClick = useAnalyticsStore((state) => state.trackProductClick)
   
   const categoryFilter = searchParams.get('category') || ''
   const searchQuery = searchParams.get('search') || ''
@@ -17,9 +23,9 @@ const Products = () => {
 
   // Get unique brands
   const brands = useMemo(() => {
-    const uniqueBrands = [...new Set(products.map(p => p.brand))]
+    const uniqueBrands = [...new Set(products.map(p => p.brand).filter(Boolean))]
     return uniqueBrands.sort()
-  }, [])
+  }, [products])
 
   // Filter products
   const filteredProducts = useMemo(() => {
@@ -42,7 +48,7 @@ const Products = () => {
     )
 
     return filtered
-  }, [categoryFilter, searchQuery, selectedBrand, priceRange])
+  }, [categoryFilter, searchQuery, selectedBrand, priceRange, products, getProductsByCategory, searchProducts])
 
   const handleSearch = (e) => {
     e.preventDefault()
@@ -183,17 +189,33 @@ const Products = () => {
                 <Link
                   key={product.id}
                   to={`/products/${product.slug}`}
+                  onClick={() => trackProductClick(product.id)}
                   className="card-soft overflow-hidden transition-transform duration-300 hover:-translate-y-2 hover:shadow-glow group"
                 >
-                  <div className="relative aspect-square bg-gradient-to-br from-primary-100 via-sky-100 to-accent-100 flex items-center justify-center">
-                    <div className="absolute inset-0 opacity-40 bg-[radial-gradient(circle_at_top,_#ffffff,_transparent_60%)]" />
-                    <span className="relative text-6xl group-hover:scale-110 transition-transform duration-300">🏊</span>
+                  <div className="relative aspect-square bg-gradient-to-br from-primary-100 via-sky-100 to-accent-100 overflow-hidden">
+                    {product.image ? (
+                      <img
+                        src={product.image}
+                        alt={product.name}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                        onError={(e) => {
+                          e.target.style.display = 'none'
+                          e.target.nextSibling.style.display = 'flex'
+                        }}
+                      />
+                    ) : null}
+                    <div className={`absolute inset-0 flex items-center justify-center ${product.image ? 'hidden' : ''}`}>
+                      <div className="absolute inset-0 opacity-40 bg-[radial-gradient(circle_at_top,_#ffffff,_transparent_60%)]" />
+                      <span className="relative text-6xl group-hover:scale-110 transition-transform duration-300">🏊</span>
+                    </div>
                   </div>
                   <div className="p-4">
                     <h3 className="font-semibold text-gray-800 mb-2 line-clamp-2">
                       {language === 'en' ? product.name : product.nameRw}
                     </h3>
-                    <p className="text-sm text-gray-600 mb-2">{product.brand}</p>
+                    {product.brand && (
+                      <p className="text-sm text-gray-600 mb-2">{product.brand}</p>
+                    )}
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-2xl font-bold text-primary-600">
