@@ -86,8 +86,10 @@ const Header = () => {
 
   return (
     <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-xl border-b border-gray-200 shadow-sm">
-      <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
+      {/* <div className="container mx-auto px-4"> */}
+      <div className="container mx-auto px-4 overflow-x-hidden">
+        {/* <div className="flex items-center justify-between h-16"> */}
+        <div className="flex items-center justify-between h-16 w-full">
           {/* Logo */}
           <Link 
             to="/" 
@@ -96,12 +98,13 @@ const Header = () => {
           >
             <span className="text-2xl animate-float-slow" aria-hidden="true">🏊</span>
             <span className="text-xl font-bold text-primary-600 tracking-tight group-hover:text-primary-700 transition-colors">
-              {language === 'en' ? 'Kigali Swim Shop' : 'Ubwoba bw\'amazi Kigali'}
+              {language === 'en' ? 'KSS' : 'Ubwoba bw\'amazi Kigali'}
             </span>
           </Link>
 
             {/* Search Bar - Desktop */}
           <div className="hidden md:block flex-1 max-w-2xl mx-8" ref={searchRef}>
+          {/* <div className="hidden md:flex-1 md:max-w-xl md:mx-4 lg:mx-8 flex-shrink" ref={searchRef}> */}
             <form onSubmit={handleSearch} className="relative" role="search">
               <label htmlFor="search-input" className="sr-only">
                 {language === 'en' ? 'Search products' : 'Shakisha ibicuruzwa'}
@@ -177,7 +180,8 @@ const Header = () => {
           </div>
 
           {/* Desktop Navigation */}
-          <nav className="hidden lg:flex items-center space-x-6 text-sm font-medium">
+          {/* <nav className="hidden lg:flex items-center space-x-6 text-sm font-medium"> */}
+          <nav className="hidden lg:flex flex-grow items-center space-x-6 text-sm font-medium min-w-0">
             <Link
               to="/"
               className="relative text-gray-700 hover:text-primary-600 transition-colors after:absolute after:left-0 after:-bottom-1 after:h-0.5 after:w-0 after:bg-primary-500 after:transition-all hover:after:w-full"
@@ -246,7 +250,8 @@ const Header = () => {
           </nav>
 
           {/* Right side actions */}
-          <div className="flex items-center space-x-2 md:space-x-4">
+          {/* <div className="flex items-center space-x-2 md:space-x-4"> */}
+          <div className="flex items-center space-x-2 md:space-x-4 flex-shrink-0">
             {/* Search - Mobile */}
             <button
               onClick={() => navigate('/products')}
