@@ -103,6 +103,7 @@ const Terms = () => {
 }
 
 export default Terms
+//adsah
 
 
 
