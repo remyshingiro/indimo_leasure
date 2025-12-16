@@ -43,6 +43,28 @@ const Header = () => {
     }
   }, [searchQuery, searchProducts])
 
+// --- NEW CODE START ---
+  const [isScrolled, setIsScrolled] = useState(false)
+  const [isCartAnimating, setIsCartAnimating] = useState(false)
+
+  // Detect Scroll
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 20)
+    }
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
+
+  // Trigger Cart Bump Animation when items change
+  useEffect(() => {
+    if (itemCount === 0) return
+    setIsCartAnimating(true)
+    const timer = setTimeout(() => setIsCartAnimating(false), 300)
+    return () => clearTimeout(timer)
+  }, [itemCount])
+  // --- NEW CODE END ---
+
   // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -84,8 +106,15 @@ const Header = () => {
     { id: 2, message: 'New products available in your favorite category', time: '1 day ago' }
   ]
 
+
   return (
-    <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-xl border-b border-gray-200 shadow-sm">
+    <header 
+  className={`sticky top-0 z-50 transition-all duration-300 ease-in-out border-b ${
+    isScrolled 
+      ? 'bg-white/30 backdrop-blur-xl py-2 shadow-md border-gray-200'  // Scrolled: Compact & Solid
+      : 'bg-white/30 backdrop-blur-md py-3 md:py-5 border-transparent'         // Top: Tall & Glassy
+  }`}
+    >
       {/* <div className="container mx-auto px-4"> */}
       <div className="container mx-auto px-4 overflow-x-hidden">
         {/* <div className="flex items-center justify-between h-16"> */}
@@ -97,7 +126,9 @@ const Header = () => {
             aria-label={language === 'en' ? 'Kigali Swim Shop Home' : 'Ahabanza Kigali Swim Shop'}
           >
             <span className="text-2xl animate-float-slow" aria-hidden="true">🏊</span>
-            <span className="text-xl font-bold text-primary-600 tracking-tight group-hover:text-primary-700 transition-colors">
+              <span className={`font-bold text-primary-600 tracking-tight group-hover:text-primary-700 transition-all duration-300 ${
+                  isScrolled ? 'text-xl' : 'text-2xl'
+              }`}>
               {language === 'en' ? 'KSS' : 'Ubwoba bw\'amazi Kigali'}
             </span>
           </Link>
@@ -396,7 +427,13 @@ const Header = () => {
               className="relative p-2 text-gray-700 hover:text-primary-600 transition-transform hover:-translate-y-0.5"
               aria-label={language === 'en' ? `Shopping cart with ${itemCount} items` : `Gafuni ifite ibintu ${itemCount}`}
             >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <svg 
+                className={`w-6 h-6 transition-transform duration-300 ${isCartAnimating ? 'scale-125 text-primary-600' : 'scale-100'}`} 
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24" 
+                aria-hidden="true">
+
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
               </svg>
               {itemCount > 0 && (
