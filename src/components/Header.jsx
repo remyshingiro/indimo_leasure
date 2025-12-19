@@ -12,10 +12,12 @@ const Header = () => {
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   
-  // Stores
+  // === STORES (Optimized Selectors) ===
   const cartItems = useCartStore((state) => state.items)
   const { language, setLanguage } = useLanguageStore()
-  const { user, logout } = useAuthStore()
+  // FIX: Using specific selectors and 'signOut' to match your store
+  const user = useAuthStore((state) => state.user)
+  const signOut = useAuthStore((state) => state.signOut)
   const categories = useCategoryStore((state) => state.categories)
 
   const navigate = useNavigate()
@@ -25,7 +27,7 @@ const Header = () => {
   const notifRef = useRef(null)
   const userRef = useRef(null)
 
-  // 1. SCROLL EFFECT: Detect scroll to change background
+  // 1. SCROLL EFFECT
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 20)
@@ -34,7 +36,7 @@ const Header = () => {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
-  // 2. CLICK OUTSIDE: Close dropdowns when clicking elsewhere
+  // 2. CLICK OUTSIDE
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (notifRef.current && !notifRef.current.contains(event.target)) {
@@ -51,21 +53,29 @@ const Header = () => {
   // Close mobile menu on route change
   useEffect(() => {
     setIsMobileMenuOpen(false)
+    setShowUserMenu(false)
   }, [location])
 
   const handleSearch = (e) => {
     e.preventDefault()
     if (searchQuery.trim()) {
       navigate(`/products?search=${encodeURIComponent(searchQuery)}`)
+      setIsMobileMenuOpen(false)
     }
   }
 
-  // Helper to determine if we are on the home page (for transparent effect)
+  const handleSignOut = async () => {
+    await signOut()
+    setShowUserMenu(false)
+    setIsMobileMenuOpen(false)
+    navigate('/')
+  }
+
+  // Determine if transparent background should be used
   const isHome = location.pathname === '/'
 
   return (
     <>
-      {/* We make the header 'fixed' so it stays on top. */}
       <header 
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
           isScrolled || !isHome 
@@ -88,18 +98,18 @@ const Header = () => {
             {/* === DESKTOP NAVIGATION === */}
             <div className="hidden lg:flex items-center gap-8">
               
-              {/* Categories Dropdown (Hover) */}
+              {/* Categories Dropdown */}
               <div className="relative group">
-                <button className={`font-bold text-sm uppercase tracking-wide py-2 ${
+                <button className={`font-bold text-sm uppercase tracking-wide py-2 flex items-center gap-1 ${
                   isScrolled || !isHome ? 'text-slate-600 hover:text-sky-600' : 'text-white/90 hover:text-white'
                 }`}>
-                  {language === 'en' ? 'Categories' : 'Ibyiciro'} ▾
+                  {language === 'en' ? 'Categories' : 'Ibyiciro'} 
+                  <span className="text-xs">▼</span>
                 </button>
                 
-                {/* The Dropdown Menu */}
                 <div className="absolute top-full left-0 w-64 pt-4 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform group-hover:translate-y-0 translate-y-2">
                   <div className="bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden p-2">
-                    {categories.map((cat) => (
+                    {categories.slice(0, 5).map((cat) => (
                       <Link 
                         key={cat.id} 
                         to={`/products?category=${cat.id}`}
@@ -129,7 +139,7 @@ const Header = () => {
               </Link>
             </div>
 
-            {/* === SEARCH BAR === */}
+            {/* === SEARCH BAR (Desktop) === */}
             <div className="hidden md:flex flex-1 max-w-md mx-4">
               <form onSubmit={handleSearch} className="w-full relative group">
                 <input
@@ -166,7 +176,7 @@ const Header = () => {
                 {language === 'en' ? 'RW' : 'EN'}
               </button>
 
-              {/* Notification Icon */}
+              {/* Notification Icon (Demo) */}
               <div className="relative" ref={notifRef}>
                 <button 
                   onClick={() => setShowNotifications(!showNotifications)}
@@ -177,23 +187,16 @@ const Header = () => {
                   }`}
                 >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
-                  <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>
+                  {/* <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span> */}
                 </button>
 
-                {/* Notification Dropdown */}
                 {showNotifications && (
-                  <div className="absolute top-full right-0 mt-2 w-80 bg-white rounded-xl shadow-2xl border border-slate-100 overflow-hidden z-50 animate-fade-in-up">
-                    <div className="p-4 border-b border-slate-50 bg-slate-50/50 flex justify-between items-center">
-                      <span className="font-bold text-slate-800">Notifications</span>
-                      <span className="text-xs text-sky-600 font-bold">Mark all read</span>
+                  <div className="absolute top-full right-0 mt-2 w-72 bg-white rounded-xl shadow-2xl border border-slate-100 overflow-hidden z-50 animate-fade-in-up">
+                    <div className="p-3 border-b border-slate-50 bg-slate-50/50">
+                      <span className="font-bold text-slate-800 text-sm">Notifications</span>
                     </div>
-                    <div className="max-h-64 overflow-y-auto">
-                      {[1, 2].map((i) => (
-                        <div key={i} className="p-4 hover:bg-slate-50 transition border-b border-slate-50 last:border-0">
-                          <p className="text-sm text-slate-800 font-medium">Order #123{i} shipped!</p>
-                          <p className="text-xs text-slate-500 mt-1">Your swimming gear is on the way.</p>
-                        </div>
-                      ))}
+                    <div className="p-4 text-center text-slate-400 text-sm">
+                      No new notifications
                     </div>
                   </div>
                 )}
@@ -216,36 +219,40 @@ const Header = () => {
                 )}
               </Link>
 
-              {/* User Menu */}
+              {/* === USER AUTH SECTION === */}
               {user ? (
                 <div className="relative" ref={userRef}>
                   <button 
                     onClick={() => setShowUserMenu(!showUserMenu)}
-                    className="w-9 h-9 rounded-full bg-gradient-to-tr from-sky-400 to-primary-600 p-0.5"
+                    className="w-9 h-9 rounded-full bg-gradient-to-tr from-sky-400 to-slate-900 p-0.5 shadow-md hover:scale-105 transition-transform"
                   >
                     <div className="w-full h-full rounded-full bg-white flex items-center justify-center overflow-hidden">
-                       <span className="text-sm font-bold text-slate-700">
+                       {/* Safe check for user.name */}
+                       <span className="text-sm font-bold text-slate-900">
                           {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
                        </span>
                     </div>
                   </button>
                   
+                  {/* Dropdown Menu */}
                   {showUserMenu && (
                     <div className="absolute top-full right-0 mt-2 w-56 bg-white rounded-xl shadow-2xl border border-slate-100 overflow-hidden z-50 animate-fade-in-up">
                       <div className="p-4 border-b border-slate-50 bg-slate-50/50">
-                        <p className="font-bold text-slate-800 truncate">{user.name}</p>
+                        <p className="font-bold text-slate-900 truncate">{user.name || 'User'}</p>
                         <p className="text-xs text-slate-500 truncate">{user.email}</p>
                       </div>
                       <div className="p-2">
-                        <Link to="/profile" className="block px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 rounded-lg hover:text-sky-600">
+                        <Link to="/profile" className="block px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 rounded-lg hover:text-sky-600 font-medium">
                           {language === 'en' ? 'My Profile' : 'Profayili Yanjye'}
                         </Link>
-                        <Link to="/orders" className="block px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 rounded-lg hover:text-sky-600">
-                          {language === 'en' ? 'My Orders' : 'Amabwiriza Yanjye'}
-                        </Link>
+                        {user.role === 'admin' && (
+                          <Link to="/admin" className="block px-4 py-2 text-sm text-purple-600 hover:bg-purple-50 rounded-lg font-bold">
+                            ⚡ Admin Dashboard
+                          </Link>
+                        )}
                         <button 
-                          onClick={() => { logout(); setShowUserMenu(false); }}
-                          className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-red-50 rounded-lg"
+                          onClick={handleSignOut}
+                          className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-red-50 rounded-lg font-medium"
                         >
                           {language === 'en' ? 'Logout' : 'Sohoka'}
                         </button>
@@ -256,7 +263,7 @@ const Header = () => {
               ) : (
                 <Link 
                   to="/login"
-                  className={`hidden sm:block px-5 py-2 rounded-full font-bold text-sm transition-transform hover:scale-105 ${
+                  className={`hidden sm:block px-6 py-2.5 rounded-full font-bold text-sm transition-transform hover:scale-105 shadow-lg ${
                     isScrolled || !isHome 
                       ? 'bg-slate-900 text-white hover:bg-slate-800' 
                       : 'bg-white text-slate-900 hover:bg-sky-50'
@@ -271,7 +278,7 @@ const Header = () => {
                 className={`lg:hidden p-2 ${isScrolled || !isHome ? 'text-slate-900' : 'text-white'}`}
                 onClick={() => setIsMobileMenuOpen(true)}
               >
-                <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" /></svg>
+                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" /></svg>
               </button>
             </div>
           </div>
@@ -284,24 +291,26 @@ const Header = () => {
         <div className={`absolute top-0 right-0 h-full w-80 bg-white shadow-2xl transform transition-transform duration-300 ${isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full'}`}>
           <div className="flex flex-col h-full">
             <div className="p-5 flex items-center justify-between border-b border-slate-100">
-              <span className="font-black text-xl text-slate-900">MENU</span>
+              <span className="font-black text-xl text-slate-900 tracking-tight">MENU</span>
               <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 text-slate-400 hover:text-red-500">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
 
-            <div className="p-5 overflow-y-auto flex-1 space-y-6">
+            <div className="p-5 overflow-y-auto flex-1 space-y-8">
+              {/* Mobile Search */}
               <form onSubmit={handleSearch} className="relative">
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search products..."
-                  className="w-full pl-10 pr-4 py-3 bg-slate-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  className="w-full pl-10 pr-4 py-3 bg-slate-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500 font-medium"
                 />
                 <svg className="w-5 h-5 text-slate-400 absolute left-3 top-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
               </form>
 
+              {/* Mobile Categories */}
               <div className="space-y-4">
                 <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Categories</p>
                 <div className="grid grid-cols-2 gap-3">
@@ -319,22 +328,24 @@ const Header = () => {
                 </div>
               </div>
 
+              {/* Mobile Links */}
               <div className="space-y-1">
-                <Link to="/" className="block px-4 py-3 rounded-xl hover:bg-slate-50 font-medium text-slate-700">Home</Link>
-                <Link to="/products" className="block px-4 py-3 rounded-xl hover:bg-slate-50 font-medium text-slate-700">All Products</Link>
-                <Link to="/cart" className="block px-4 py-3 rounded-xl hover:bg-slate-50 font-medium text-slate-700">
-                   Cart ({cartItems.length})
-                </Link>
+                <Link to="/" onClick={() => setIsMobileMenuOpen(false)} className="block px-4 py-3 rounded-xl hover:bg-slate-50 font-bold text-slate-700">Home</Link>
+                <Link to="/products" onClick={() => setIsMobileMenuOpen(false)} className="block px-4 py-3 rounded-xl hover:bg-slate-50 font-bold text-slate-700">All Products</Link>
+                {user && (
+                   <Link to="/profile" onClick={() => setIsMobileMenuOpen(false)} className="block px-4 py-3 rounded-xl hover:bg-slate-50 font-bold text-slate-700">My Profile</Link>
+                )}
               </div>
             </div>
 
+            {/* Mobile Footer (Auth) */}
             <div className="p-5 border-t border-slate-100 bg-slate-50">
               {!user ? (
-                <Link to="/login" className="block w-full bg-slate-900 text-white font-bold text-center py-3 rounded-xl">
+                <Link to="/login" onClick={() => setIsMobileMenuOpen(false)} className="block w-full bg-slate-900 text-white font-bold text-center py-4 rounded-xl shadow-lg">
                   Login / Register
                 </Link>
               ) : (
-                <button onClick={() => { logout(); setIsMobileMenuOpen(false); }} className="block w-full bg-red-50 text-red-500 font-bold text-center py-3 rounded-xl border border-red-100">
+                <button onClick={handleSignOut} className="block w-full bg-white text-red-500 font-bold text-center py-4 rounded-xl border border-slate-200 hover:bg-red-50">
                   Logout
                 </button>
               )}
