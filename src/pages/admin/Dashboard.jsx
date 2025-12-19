@@ -4,12 +4,14 @@ import useCategoryStore from '../../stores/categoryStore'
 import useAnalyticsStore from '../../stores/analyticsStore'
 import { formatRWF } from '../../utils/currency'
 import LazyImage from '../../components/LazyImage'
+import { uploadToCloudinary } from '../../utils/uploadService'
 
 const AdminDashboard = () => {
   const [orders, setOrders] = useState([])
   const [activeTab, setActiveTab] = useState('overview')
   const [showProductModal, setShowProductModal] = useState(false)
   const [showCategoryModal, setShowCategoryModal] = useState(false)
+  const [isUploading, setIsUploading] = useState(false)
   
   // Edit States
   const [editingProduct, setEditingProduct] = useState(null)
@@ -20,7 +22,6 @@ const AdminDashboard = () => {
   const setProducts = useProductStore((state) => state.setProducts)
   const categories = useCategoryStore((state) => state.categories)
   const setCategories = useCategoryStore((state) => state.setCategories)
-  const analyticsSummary = useAnalyticsStore((state) => state.getSummary)()
   
   // Forms
   const [productForm, setProductForm] = useState({
@@ -31,7 +32,6 @@ const AdminDashboard = () => {
   
   // Previews
   const [imagePreview, setImagePreview] = useState(null)
-  const [categoryImagePreview, setCategoryImagePreview] = useState(null)
 
   useEffect(() => {
     const storedOrders = JSON.parse(localStorage.getItem('orders') || '[]')
@@ -88,18 +88,18 @@ const AdminDashboard = () => {
     setShowProductModal(false)
   }
 
-  // --- CATEGORY HELPERS (FIXED) ---
+  // --- CATEGORY HELPERS ---
   const handleAddCategory = () => {
     setEditingCategory(null)
     setCategoryForm({ name: '', nameRw: '', image: '', icon: '' })
-    setCategoryImagePreview(null)
+    setImagePreview(null)
     setShowCategoryModal(true)
   }
 
   const handleEditCategory = (cat) => {
     setEditingCategory(cat)
     setCategoryForm({ ...cat })
-    setCategoryImagePreview(cat.image || null)
+    setImagePreview(cat.image || null)
     setShowCategoryModal(true)
   }
 
@@ -143,8 +143,7 @@ const AdminDashboard = () => {
   return (
     <div className="min-h-screen bg-slate-50 flex">
       
-      {/* === 1. SIDEBAR NAVIGATION (FIXED) === */}
-      {/* pt-24 pushes it down below the global header. z-40 keeps it below the header but above content */}
+      {/* === 1. SIDEBAR NAVIGATION === */}
       <aside className="fixed top-0 left-0 h-full w-64 bg-white border-r border-slate-200 hidden lg:block z-40 pt-24">
         <div className="p-6">
           <div className="flex items-center gap-2 mb-8 px-4">
@@ -175,8 +174,7 @@ const AdminDashboard = () => {
         </div>
       </aside>
 
-      {/* === 2. MAIN CONTENT (Offset for Sidebar) === */}
-      {/* ml-0 lg:ml-64 moves content to right on desktop */}
+      {/* === 2. MAIN CONTENT === */}
       <main className="flex-1 ml-0 lg:ml-64 p-4 lg:p-8 pt-24 lg:pt-28">
         
         <div className="flex justify-between items-end mb-8">
@@ -228,7 +226,7 @@ const AdminDashboard = () => {
                     <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-4">
                       <div>
                         <h3 className="font-bold text-slate-900">Order #{order.id}</h3>
-                        <p className="text-sm text-slate-500">{order.customer.fullName} • {formatRWF(order.total)}</p>
+                        <p className="text-sm text-slate-500">{order.customer?.fullName} • {formatRWF(order.total)}</p>
                       </div>
                       <select 
                         value={order.status}
@@ -269,14 +267,14 @@ const AdminDashboard = () => {
           </div>
         )}
 
-        {/* --- TAB: CATEGORIES (FIXED) --- */}
+        {/* --- TAB: CATEGORIES --- */}
         {activeTab === 'categories' && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {categories.map((cat) => (
               <div key={cat.id} className="bg-white rounded-2xl border border-slate-100 p-6 flex flex-col items-center text-center hover:shadow-md transition">
-                <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center text-3xl mb-4">
+                <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center text-3xl mb-4 overflow-hidden">
                   {cat.image ? (
-                    <img src={cat.image} alt={cat.name} className="w-full h-full rounded-full object-cover" />
+                    <img src={cat.image} alt={cat.name} className="w-full h-full object-cover" />
                   ) : cat.icon}
                 </div>
                 <h3 className="font-bold text-slate-900">{cat.name}</h3>
@@ -291,24 +289,90 @@ const AdminDashboard = () => {
 
       </main>
 
-      {/* === PRODUCT MODAL === */}
+      {/* === PRODUCT MODAL (With PC Upload) === */}
       {showProductModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl p-8">
             <h2 className="text-2xl font-black text-slate-900 mb-6">{editingProduct ? 'Edit Product' : 'New Product'}</h2>
             <div className="space-y-4">
-               {/* Simplified Form Fields */}
-               <div><label className="text-xs font-bold text-slate-500 uppercase">Name</label><input value={productForm.name} onChange={e => setProductForm({...productForm, name: e.target.value})} className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200" /></div>
-               <div><label className="text-xs font-bold text-slate-500 uppercase">Price</label><input type="number" value={productForm.price} onChange={e => setProductForm({...productForm, price: e.target.value})} className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200" /></div>
-               <div><label className="text-xs font-bold text-slate-500 uppercase">Stock</label><input type="number" value={productForm.stock} onChange={e => setProductForm({...productForm, stock: e.target.value})} className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200" /></div>
                <div>
-                 <label className="text-xs font-bold text-slate-500 uppercase">Image URL</label>
-                 <input value={productForm.image} onChange={e => {setProductForm({...productForm, image: e.target.value}); setImagePreview(e.target.value)}} className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200" />
-                 {imagePreview && <img src={imagePreview} className="mt-2 w-20 h-20 rounded-lg object-cover" />}
+                  <label className="text-xs font-bold text-slate-500 uppercase">Name</label>
+                  <input value={productForm.name} onChange={e => setProductForm({...productForm, name: e.target.value})} className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200" />
                </div>
+               
+               <div className="grid grid-cols-2 gap-4">
+                 <div>
+                   <label className="text-xs font-bold text-slate-500 uppercase">Price</label>
+                   <input type="number" value={productForm.price} onChange={e => setProductForm({...productForm, price: e.target.value})} className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200" />
+                 </div>
+                 <div>
+                   <label className="text-xs font-bold text-slate-500 uppercase">Stock</label>
+                   <input type="number" value={productForm.stock} onChange={e => setProductForm({...productForm, stock: e.target.value})} className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200" />
+                 </div>
+               </div>
+
+               {/* === PC IMAGE UPLOAD === */}
+               <div>
+                 <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Product Image</label>
+                 <div className="space-y-3">
+                    <div className={`border-2 border-dashed rounded-xl p-6 text-center transition-colors ${isUploading ? 'bg-slate-50 border-slate-300' : 'border-slate-300 hover:border-slate-900 hover:bg-slate-50'}`}>
+                      <div className="relative">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          disabled={isUploading}
+                          onChange={async (e) => {
+                            const file = e.target.files[0];
+                            if (!file) return;
+                            setIsUploading(true);
+                            try {
+                              const url = await uploadToCloudinary(file);
+                              setProductForm(prev => ({ ...prev, image: url }));
+                              setImagePreview(url);
+                            } catch (error) {
+                              alert('Upload failed. Check your internet connection.');
+                            } finally {
+                              setIsUploading(false);
+                            }
+                          }}
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                        />
+                        <div className="flex flex-col items-center justify-center pointer-events-none">
+                          {isUploading ? (
+                            <span className="text-sm font-bold text-slate-500">Uploading...</span>
+                          ) : (
+                            <>
+                              <span className="text-2xl mb-1">☁️</span>
+                              <span className="text-sm font-bold text-slate-700">Click to Upload from PC</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Manual URL Fallback */}
+                    <input
+                      value={productForm.image}
+                      onChange={e => { setProductForm({...productForm, image: e.target.value}); setImagePreview(e.target.value); }}
+                      placeholder="Or paste URL..."
+                      className="w-full p-2 text-xs bg-slate-50 rounded-lg border border-slate-200"
+                    />
+
+                    {imagePreview && (
+                      <img src={imagePreview} alt="Preview" className="w-20 h-20 rounded-lg object-cover border border-slate-200" />
+                    )}
+                 </div>
+               </div>
+
                <div className="flex justify-end gap-3 pt-4">
                  <button onClick={() => setShowProductModal(false)} className="px-6 py-3 rounded-xl font-bold text-slate-500 hover:bg-slate-100">Cancel</button>
-                 <button onClick={handleSaveProduct} className="px-6 py-3 rounded-xl font-bold bg-slate-900 text-white hover:bg-slate-800 shadow-lg">Save</button>
+                 <button 
+                   onClick={handleSaveProduct} 
+                   disabled={isUploading}
+                   className="px-6 py-3 rounded-xl font-bold bg-slate-900 text-white hover:bg-slate-800 shadow-lg disabled:opacity-50"
+                 >
+                   {isUploading ? 'Uploading...' : 'Save'}
+                 </button>
                </div>
             </div>
           </div>
@@ -323,11 +387,46 @@ const AdminDashboard = () => {
             <div className="space-y-4">
                <div><label className="text-xs font-bold text-slate-500 uppercase">Name (English)</label><input value={categoryForm.name} onChange={e => setCategoryForm({...categoryForm, name: e.target.value})} className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200" /></div>
                <div><label className="text-xs font-bold text-slate-500 uppercase">Name (Kinyarwanda)</label><input value={categoryForm.nameRw} onChange={e => setCategoryForm({...categoryForm, nameRw: e.target.value})} className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200" /></div>
-               <div><label className="text-xs font-bold text-slate-500 uppercase">Emoji Icon</label><input value={categoryForm.icon} onChange={e => setCategoryForm({...categoryForm, icon: e.target.value})} className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200" placeholder="🏊" /></div>
+               
+               {/* Category Upload */}
+               <div>
+                 <label className="text-xs font-bold text-slate-500 uppercase">Category Image (Or Icon)</label>
+                 <div className="flex gap-2 mt-2">
+                   <div className="relative flex-1">
+                      <input 
+                        type="file" 
+                        accept="image/*"
+                        disabled={isUploading}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                        onChange={async (e) => {
+                            const file = e.target.files[0];
+                            if(!file) return;
+                            setIsUploading(true);
+                            try {
+                                const url = await uploadToCloudinary(file);
+                                setCategoryForm(prev => ({ ...prev, image: url, icon: '' }));
+                                setImagePreview(url);
+                            } finally {
+                                setIsUploading(false);
+                            }
+                        }}
+                      />
+                      <div className="w-full p-3 bg-slate-100 rounded-xl text-center text-xs font-bold text-slate-600 border border-slate-200 hover:bg-slate-200">
+                        {isUploading ? 'Uploading...' : 'Upload Image'}
+                      </div>
+                   </div>
+                   <input 
+                     value={categoryForm.icon} 
+                     onChange={e => setCategoryForm({...categoryForm, icon: e.target.value, image: ''})} 
+                     className="w-20 p-3 bg-slate-50 rounded-xl border border-slate-200 text-center" 
+                     placeholder="Emoji" 
+                   />
+                 </div>
+               </div>
                
                <div className="flex justify-end gap-3 pt-4">
                  <button onClick={() => setShowCategoryModal(false)} className="px-6 py-3 rounded-xl font-bold text-slate-500 hover:bg-slate-100">Cancel</button>
-                 <button onClick={handleSaveCategory} className="px-6 py-3 rounded-xl font-bold bg-slate-900 text-white hover:bg-slate-800 shadow-lg">Save</button>
+                 <button onClick={handleSaveCategory} disabled={isUploading} className="px-6 py-3 rounded-xl font-bold bg-slate-900 text-white hover:bg-slate-800 shadow-lg disabled:opacity-50">Save</button>
                </div>
             </div>
           </div>
