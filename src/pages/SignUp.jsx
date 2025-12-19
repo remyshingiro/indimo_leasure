@@ -3,188 +3,182 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import useAuthStore from '../stores/authStore'
 import useLanguageStore from '../stores/languageStore'
-import { sanitizeFormData, validateEmail, validatePhone } from '../utils/security'
-import { errorHandler } from '../utils/errorHandler'
 
 const SignUp = () => {
   const navigate = useNavigate()
+  // 1. Get signUp function
   const signUp = useAuthStore((state) => state.signUp)
   const language = useLanguageStore((state) => state.language)
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
   
+  const [isLoading, setIsLoading] = useState(false)
+  const [authError, setAuthError] = useState('')
+
   const { register, handleSubmit, formState: { errors }, watch } = useForm()
   const password = watch('password')
 
   const onSubmit = async (data) => {
-    setError('')
-    setLoading(true)
+    setIsLoading(true)
+    setAuthError('')
+
+    // 2. Prepare data exactly how your store wants it
+    const newUserPayload = {
+      name: data.fullName,
+      email: data.email,
+      phone: data.phone, // Store requires this!
+      password: data.password
+    }
     
     try {
-      // Sanitize form data
-      const sanitized = sanitizeFormData(data)
+      // 3. Attempt registration
+      const createdUser = await signUp(newUserPayload)
       
-      // Additional validation
-      if (!validateEmail(sanitized.email)) {
-        setError(language === 'en' ? 'Invalid email address' : 'Imeri ntabwo ari yo')
-        setLoading(false)
-        return
+      // 4. Redirect based on if it's the Admin email
+      if (createdUser.email === 'admin@kigaliswim.com') {
+        navigate('/admin')
+      } else {
+        navigate('/')
       }
-      
-      if (!validatePhone(sanitized.phone)) {
-        setError(language === 'en' ? 'Invalid phone number format' : 'Numero ya telefoni ntabwo ari yo')
-        setLoading(false)
-        return
-      }
-      
-      if (sanitized.password.length < 6) {
-        setError(language === 'en' ? 'Password must be at least 6 characters' : 'Ijambo ry\'ibanga rikwiye kuba rigufi cyane cyane 6')
-        setLoading(false)
-        return
-      }
-      
-      await errorHandler.handleAsync(async () => {
-        await signUp(sanitized)
-        navigate('/profile')
-      }, { context: 'signUp' })
-    } catch (err) {
-      const friendlyMessage = errorHandler.getUserFriendlyMessage(err)
-      setError(err.message || friendlyMessage || (language === 'en' ? 'Failed to create account. Please try again.' : 'Ntibyashoboye kurema konti. Nyamuneka gerageza nanone.'))
+
+    } catch (error) {
+      // 5. Handle store validation errors (e.g. "Phone required")
+      setAuthError(error.message || 'Failed to create account')
     } finally {
-      setLoading(false)
+      setIsLoading(false)
     }
   }
 
   return (
-    <div className="container mx-auto px-4 py-12 max-w-md">
-      <div className="card-soft p-8">
-        <h1 className="text-3xl font-bold text-center mb-6 text-gray-800">
-          {language === 'en' ? 'Create Account' : 'Kurema Konti'}
-        </h1>
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4 pt-32 pb-12">
+      <div className="max-w-4xl w-full bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row-reverse">
         
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
-            {error}
+        {/* Right Side: Visual */}
+        <div className="hidden md:block w-1/2 bg-slate-900 relative">
+          <div className="absolute inset-0 bg-gradient-to-bl from-sky-600/20 to-slate-900/90 z-10" />
+          <LazyImage 
+            src="https://images.unsplash.com/photo-1530549387789-4c1017266635?q=80&w=2070&auto=format&fit=crop" 
+            alt="Pool" 
+            className="absolute inset-0 w-full h-full object-cover opacity-60"
+          />
+          <div className="relative z-20 h-full flex flex-col justify-end p-12 text-white text-right">
+            <h2 className="text-4xl font-black mb-4">{language === 'en' ? 'Join the Squad' : 'Iyandikishe'}</h2>
+            <p className="text-lg text-slate-300">
+              {language === 'en' ? 'Get exclusive deals, track your orders, and swim faster.' : 'Bona ibiciro byiza, kurikirana ibyo watumije.'}
+            </p>
           </div>
-        )}
+        </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-2 text-gray-700">
-              {language === 'en' ? 'Full Name' : 'Amazina Yuzuye'} <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              {...register('name', { required: language === 'en' ? 'Name is required' : 'Amazina akenewe' })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-              placeholder={language === 'en' ? 'John Doe' : 'John Doe'}
-            />
-            {errors.name && (
-              <p className="text-red-500 text-sm mt-1">{errors.name.message}</p>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-2 text-gray-700">
-              {language === 'en' ? 'Email' : 'Imeri'} <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="email"
-              {...register('email', {
-                required: language === 'en' ? 'Email is required' : 'Imeri ikenewe',
-                pattern: {
-                  value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                  message: language === 'en' ? 'Invalid email address' : 'Imeri ntabwo ari yo'
-                }
-              })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-              placeholder="example@email.com"
-            />
-            {errors.email && (
-              <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>
-            )}
+        {/* Left Side: Form */}
+        <div className="w-full md:w-1/2 p-8 md:p-12 flex flex-col justify-center">
+          <div className="text-center md:text-left mb-8">
+            <h1 className="text-3xl font-black text-slate-900 mb-2">
+              {language === 'en' ? 'Create Account' : 'Fungura Konti'}
+            </h1>
+            <p className="text-slate-500">
+              {language === 'en' ? 'Already a member?' : 'Ufite konti?'} 
+              <Link to="/login" className="text-sky-600 font-bold ml-1 hover:underline">
+                {language === 'en' ? 'Log In' : 'Injira'}
+              </Link>
+            </p>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-2 text-gray-700">
-              {language === 'en' ? 'Phone Number' : 'Numero ya Telefoni'} <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="tel"
-              {...register('phone', {
-                required: language === 'en' ? 'Phone is required' : 'Telefoni ikenewe',
-                pattern: {
-                  value: /^[0-9+\-\s()]+$/,
-                  message: language === 'en' ? 'Invalid phone number' : 'Numero ya telefoni ntabwo ari yo'
-                }
-              })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-              placeholder="+250 788 123 456"
-            />
-            {errors.phone && (
-              <p className="text-red-500 text-sm mt-1">{errors.phone.message}</p>
-            )}
-          </div>
+          {authError && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-100 text-red-600 rounded-xl text-sm font-medium flex items-center gap-2">
+              <span>⚠️</span> {authError}
+            </div>
+          )}
 
-          <div>
-            <label className="block text-sm font-medium mb-2 text-gray-700">
-              {language === 'en' ? 'Password' : 'Ijambo ry\'ibanga'} <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="password"
-              {...register('password', {
-                required: language === 'en' ? 'Password is required' : 'Ijambo ry\'ibanga rikenewe',
-                minLength: {
-                  value: 6,
-                  message: language === 'en' ? 'Password must be at least 6 characters' : 'Ijambo ry\'ibanga rikwiye kuba rigufi cyane cyane 6'
-                }
-              })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-            />
-            {errors.password && (
-              <p className="text-red-500 text-sm mt-1">{errors.password.message}</p>
-            )}
-          </div>
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            
+            {/* Full Name */}
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-1">
+                {language === 'en' ? 'Full Name' : 'Amazina'}
+              </label>
+              <input
+                {...register('fullName', { required: true })}
+                className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-200 focus:border-sky-500 transition-all"
+                placeholder="John Doe"
+              />
+              {errors.fullName && <span className="text-xs text-red-500">Required</span>}
+            </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-2 text-gray-700">
-              {language === 'en' ? 'Confirm Password' : 'Emeza Ijambo ry\'ibanga'} <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="password"
-              {...register('confirmPassword', {
-                required: language === 'en' ? 'Please confirm password' : 'Nyamuneka emeza ijambo ry\'ibanga',
-                validate: value => value === password || (language === 'en' ? 'Passwords do not match' : 'Amajambo y\'ibanga ntacyo bihuye')
-              })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-            />
-            {errors.confirmPassword && (
-              <p className="text-red-500 text-sm mt-1">{errors.confirmPassword.message}</p>
-            )}
-          </div>
+            {/* Email */}
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-1">
+                {language === 'en' ? 'Email' : 'Imeli'}
+              </label>
+              <input
+                {...register('email', { required: true, pattern: /^\S+@\S+$/i })}
+                type="email"
+                className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-200 focus:border-sky-500 transition-all"
+                placeholder="you@example.com"
+              />
+              {errors.email && <span className="text-xs text-red-500">Valid email required</span>}
+            </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-primary-600 hover:bg-primary-700 disabled:bg-gray-400 text-white font-semibold py-3 rounded-lg transition"
-          >
-            {loading
-              ? (language === 'en' ? 'Creating Account...' : 'Kurema Konti...')
-              : (language === 'en' ? 'Create Account' : 'Kurema Konti')
-            }
-          </button>
-        </form>
+            {/* Phone (REQUIRED BY STORE) */}
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-1">
+                {language === 'en' ? 'Phone Number' : 'Telefoni'}
+              </label>
+              <input
+                {...register('phone', { required: true })}
+                type="tel"
+                className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-200 focus:border-sky-500 transition-all"
+                placeholder="+250..."
+              />
+              {errors.phone && <span className="text-xs text-red-500">Phone required</span>}
+            </div>
 
-        <p className="text-center mt-6 text-gray-600">
-          {language === 'en' ? 'Already have an account?' : 'Ufite konti?'}{' '}
-          <Link to="/signin" className="text-primary-600 hover:underline font-semibold">
-            {language === 'en' ? 'Sign In' : 'Injira'}
-          </Link>
-        </p>
+            {/* Password */}
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-1">
+                {language === 'en' ? 'Password' : 'Ijambo ry\'ibanga'}
+              </label>
+              <input
+                {...register('password', { required: true, minLength: 6 })}
+                type="password"
+                className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-200 focus:border-sky-500 transition-all"
+                placeholder="••••••••"
+              />
+              {errors.password && <span className="text-xs text-red-500">Min 6 chars</span>}
+            </div>
+
+            {/* Confirm Password */}
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-1">
+                {language === 'en' ? 'Confirm Password' : 'Emeza'}
+              </label>
+              <input
+                {...register('confirmPassword', { 
+                  validate: value => value === password || "Passwords do not match"
+                })}
+                type="password"
+                className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-200 focus:border-sky-500 transition-all"
+                placeholder="••••••••"
+              />
+              {errors.confirmPassword && <span className="text-xs text-red-500">Mismatch</span>}
+            </div>
+
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full bg-slate-900 text-white font-bold py-4 rounded-xl shadow-lg hover:bg-slate-800 hover:-translate-y-1 transition-all disabled:opacity-50 mt-4 flex justify-center items-center"
+            >
+              {isLoading ? (
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                language === 'en' ? 'Get Started' : 'Tangira'
+              )}
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   )
 }
 
-export default SignUp
+// Simple Helper for Image
+const LazyImage = ({ src, alt, className }) => <img src={src} alt={alt} className={className} />
 
+export default SignUp

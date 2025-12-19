@@ -7,6 +7,7 @@ import WhatsAppButton from './components/WhatsAppButton'
 import useAnalyticsStore from './stores/analyticsStore'
 import useAuthStore from './stores/authStore'
 import { getSessionId } from './utils/analytics'
+import ProtectedRoute from './components/ProtectedRoute'
 
 // Lazy load pages
 const Home = lazy(() => import('./pages/Home'))
@@ -100,10 +101,10 @@ function App() {
                 <Route path="/policies/privacy" element={<PrivacyPolicy />} />
                 <Route path="/policies/terms" element={<Terms />} />
                 <Route path="/signup" element={<SignUp />} />
-                <Route path="/signin" element={<SignIn />} />
+                <Route path="/login" element={<SignIn />} />
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/wishlist" element={<div className="container mx-auto px-4 py-12 text-center"><h1 className="text-2xl font-bold">Wishlist Coming Soon</h1></div>} />
-                <Route path="/admin" element={<AdminDashboard />} />
+                <Route path="/admin" element={<ProtectedRoute requireAdmin={true}><AdminDashboard /></ProtectedRoute>} />
               </Routes>
             </Suspense>
           </MainLayout>

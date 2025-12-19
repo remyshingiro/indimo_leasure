@@ -7,24 +7,29 @@ import LazyImage from '../../components/LazyImage'
 
 const AdminDashboard = () => {
   const [orders, setOrders] = useState([])
-  const [activeTab, setActiveTab] = useState('overview') // 'overview', 'orders', 'products', 'categories'
+  const [activeTab, setActiveTab] = useState('overview')
   const [showProductModal, setShowProductModal] = useState(false)
   const [showCategoryModal, setShowCategoryModal] = useState(false)
+  
+  // Edit States
   const [editingProduct, setEditingProduct] = useState(null)
   const [editingCategory, setEditingCategory] = useState(null)
   
+  // Stores
   const products = useProductStore((state) => state.products)
   const setProducts = useProductStore((state) => state.setProducts)
   const categories = useCategoryStore((state) => state.categories)
   const setCategories = useCategoryStore((state) => state.setCategories)
   const analyticsSummary = useAnalyticsStore((state) => state.getSummary)()
   
-  // Forms State
+  // Forms
   const [productForm, setProductForm] = useState({
     name: '', nameRw: '', slug: '', category: 'caps', price: '', originalPrice: '',
     description: '', descriptionRw: '', brand: '', stock: '', image: '', sizes: [], colors: []
   })
   const [categoryForm, setCategoryForm] = useState({ name: '', nameRw: '', image: '', icon: '' })
+  
+  // Previews
   const [imagePreview, setImagePreview] = useState(null)
   const [categoryImagePreview, setCategoryImagePreview] = useState(null)
 
@@ -33,6 +38,7 @@ const AdminDashboard = () => {
     setOrders(storedOrders)
   }, [])
 
+  // --- ORDER HELPERS ---
   const updateOrderStatus = (orderId, newStatus) => {
     const updatedOrders = orders.map(order =>
       order.id === orderId ? { ...order, status: newStatus } : order
@@ -41,7 +47,7 @@ const AdminDashboard = () => {
     localStorage.setItem('orders', JSON.stringify(updatedOrders))
   }
 
-  // --- HANDLERS (Same logic as before, kept for functionality) ---
+  // --- PRODUCT HELPERS ---
   const handleAddProduct = () => {
     setEditingProduct(null)
     setProductForm({ name: '', nameRw: '', slug: '', category: 'caps', price: '', originalPrice: '', description: '', descriptionRw: '', brand: '', stock: '', image: '', sizes: [], colors: [] })
@@ -51,7 +57,7 @@ const AdminDashboard = () => {
 
   const handleEditProduct = (product) => {
     setEditingProduct(product)
-    setProductForm({ ...product, price: product.price, stock: product.stock })
+    setProductForm({ ...product })
     setImagePreview(product.image || null)
     setShowProductModal(true)
   }
@@ -64,6 +70,7 @@ const AdminDashboard = () => {
 
   const handleSaveProduct = () => {
     if (!productForm.name || !productForm.price) return alert('Name and Price required')
+    
     const newProd = {
         ...productForm, 
         id: editingProduct ? editingProduct.id : Date.now(),
@@ -81,20 +88,44 @@ const AdminDashboard = () => {
     setShowProductModal(false)
   }
 
+  // --- CATEGORY HELPERS (FIXED) ---
+  const handleAddCategory = () => {
+    setEditingCategory(null)
+    setCategoryForm({ name: '', nameRw: '', image: '', icon: '' })
+    setCategoryImagePreview(null)
+    setShowCategoryModal(true)
+  }
+
+  const handleEditCategory = (cat) => {
+    setEditingCategory(cat)
+    setCategoryForm({ ...cat })
+    setCategoryImagePreview(cat.image || null)
+    setShowCategoryModal(true)
+  }
+
+  const handleDeleteCategory = (catId) => {
+    if(window.confirm('Delete this category?')) {
+        setCategories(categories.filter(c => c.id !== catId))
+    }
+  }
+
+  const handleSaveCategory = () => {
+    if (!categoryForm.name) return alert('Category Name required')
+
+    const newCat = {
+        ...categoryForm,
+        id: editingCategory ? editingCategory.id : categoryForm.name.toLowerCase().replace(/\s+/g, '-')
+    }
+
+    if (editingCategory) {
+        setCategories(categories.map(c => c.id === editingCategory.id ? newCat : c))
+    } else {
+        setCategories([...categories, newCat])
+    }
+    setShowCategoryModal(false)
+  }
+
   // --- UI COMPONENTS ---
-
-  const StatCard = ({ title, value, icon, color }) => (
-    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4 hover:-translate-y-1 transition-transform duration-300">
-      <div className={`w-12 h-12 rounded-full flex items-center justify-center text-xl ${color}`}>
-        {icon}
-      </div>
-      <div>
-        <p className="text-slate-500 text-xs uppercase font-bold tracking-wider">{title}</p>
-        <p className="text-2xl font-black text-slate-900">{value}</p>
-      </div>
-    </div>
-  )
-
   const StatusBadge = ({ status }) => {
     const colors = {
       pending: 'bg-orange-100 text-orange-600',
@@ -112,10 +143,11 @@ const AdminDashboard = () => {
   return (
     <div className="min-h-screen bg-slate-50 flex">
       
-      {/* === SIDEBAR NAVIGATION === */}
-      <aside className="w-64 bg-white border-r border-slate-200 hidden lg:block fixed h-full z-10">
+      {/* === 1. SIDEBAR NAVIGATION (FIXED) === */}
+      {/* pt-24 pushes it down below the global header. z-40 keeps it below the header but above content */}
+      <aside className="fixed top-0 left-0 h-full w-64 bg-white border-r border-slate-200 hidden lg:block z-40 pt-24">
         <div className="p-6">
-          <div className="flex items-center gap-2 mb-8">
+          <div className="flex items-center gap-2 mb-8 px-4">
             <span className="text-2xl">⚡</span>
             <span className="font-black text-xl text-slate-900">Admin</span>
           </div>
@@ -143,108 +175,71 @@ const AdminDashboard = () => {
         </div>
       </aside>
 
-      {/* === MAIN CONTENT === */}
-      <main className="flex-1 lg:ml-64 p-4 lg:p-8 pt-24 lg:pt-8">
+      {/* === 2. MAIN CONTENT (Offset for Sidebar) === */}
+      {/* ml-0 lg:ml-64 moves content to right on desktop */}
+      <main className="flex-1 ml-0 lg:ml-64 p-4 lg:p-8 pt-24 lg:pt-28">
         
-        {/* Mobile Header (Title) */}
         <div className="flex justify-between items-end mb-8">
           <div>
             <h1 className="text-2xl lg:text-3xl font-black text-slate-900 capitalize">{activeTab}</h1>
             <p className="text-slate-500 text-sm mt-1">Manage your store efficiently</p>
           </div>
-          {/* Action Buttons based on Tab */}
           {activeTab === 'products' && (
-            <button onClick={handleAddProduct} className="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-lg font-bold text-sm shadow-lg flex items-center gap-2">
-              <span>+</span> Add Product
+            <button onClick={handleAddProduct} className="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-lg font-bold text-sm shadow-lg">
+              + Add Product
+            </button>
+          )}
+          {activeTab === 'categories' && (
+            <button onClick={handleAddCategory} className="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-lg font-bold text-sm shadow-lg">
+              + Add Category
             </button>
           )}
         </div>
 
-        {/* === TAB: OVERVIEW === */}
+        {/* --- TAB: OVERVIEW --- */}
         {activeTab === 'overview' && (
-          <div className="space-y-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <StatCard title="Total Revenue" value={formatRWF(orders.reduce((sum, o) => sum + o.total, 0))} icon="💰" color="bg-green-100 text-green-600" />
-              <StatCard title="Total Orders" value={orders.length} icon="📦" color="bg-blue-100 text-blue-600" />
-              <StatCard title="Pending" value={orders.filter(o => o.status === 'pending').length} icon="⏳" color="bg-orange-100 text-orange-600" />
-              <StatCard title="Products" value={products.length} icon="🏷️" color="bg-purple-100 text-purple-600" />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+               <p className="text-slate-500 text-xs font-bold uppercase">Total Revenue</p>
+               <p className="text-2xl font-black text-green-600">{formatRWF(orders.reduce((sum, o) => sum + o.total, 0))}</p>
             </div>
-
-            {/* Recent Orders Preview */}
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
-              <h3 className="font-bold text-lg mb-4 text-slate-900">Recent Orders</h3>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm text-slate-600">
-                  <thead className="text-xs uppercase text-slate-400 border-b border-slate-100">
-                    <tr>
-                      <th className="pb-3 pl-4">Order ID</th>
-                      <th className="pb-3">Customer</th>
-                      <th className="pb-3">Status</th>
-                      <th className="pb-3">Total</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {orders.slice(0, 5).map(order => (
-                      <tr key={order.id} className="hover:bg-slate-50/50 transition">
-                        <td className="py-3 pl-4 font-mono">#{order.id.toString().slice(-6)}</td>
-                        <td className="py-3 font-bold text-slate-900">{order.customer.fullName}</td>
-                        <td className="py-3"><StatusBadge status={order.status} /></td>
-                        <td className="py-3 font-bold">{formatRWF(order.total)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                {orders.length === 0 && <p className="text-center py-4 text-slate-400">No orders found.</p>}
-              </div>
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+               <p className="text-slate-500 text-xs font-bold uppercase">Orders</p>
+               <p className="text-2xl font-black text-blue-600">{orders.length}</p>
+            </div>
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+               <p className="text-slate-500 text-xs font-bold uppercase">Pending</p>
+               <p className="text-2xl font-black text-orange-600">{orders.filter(o => o.status === 'pending').length}</p>
+            </div>
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+               <p className="text-slate-500 text-xs font-bold uppercase">Products</p>
+               <p className="text-2xl font-black text-purple-600">{products.length}</p>
             </div>
           </div>
         )}
 
-        {/* === TAB: ORDERS === */}
+        {/* --- TAB: ORDERS --- */}
         {activeTab === 'orders' && (
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-            {orders.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="text-4xl mb-2 opacity-50">📦</div>
-                <p className="text-slate-500">No orders yet.</p>
-              </div>
-            ) : (
+            {orders.length === 0 ? <p className="p-8 text-center text-slate-500">No orders yet.</p> : (
               <div className="divide-y divide-slate-100">
                 {orders.map((order) => (
                   <div key={order.id} className="p-6 hover:bg-slate-50 transition">
                     <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-4">
                       <div>
-                        <div className="flex items-center gap-3 mb-1">
-                          <h3 className="font-bold text-slate-900 text-lg">Order #{order.id}</h3>
-                          <StatusBadge status={order.status} />
-                        </div>
-                        <p className="text-sm text-slate-500">
-                          {new Date(order.date).toLocaleDateString()} • {order.customer.fullName}
-                        </p>
+                        <h3 className="font-bold text-slate-900">Order #{order.id}</h3>
+                        <p className="text-sm text-slate-500">{order.customer.fullName} • {formatRWF(order.total)}</p>
                       </div>
-                      <div className="flex items-center gap-4">
-                        <p className="text-xl font-black text-slate-900">{formatRWF(order.total)}</p>
-                        <select 
-                          value={order.status}
-                          onChange={(e) => updateOrderStatus(order.id, e.target.value)}
-                          className="bg-white border border-slate-200 text-sm font-medium py-2 px-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
-                        >
-                          <option value="pending">Pending</option>
-                          <option value="processing">Processing</option>
-                          <option value="shipped">Shipped</option>
-                          <option value="delivered">Delivered</option>
-                          <option value="cancelled">Cancelled</option>
-                        </select>
-                      </div>
-                    </div>
-                    {/* Order Items */}
-                    <div className="bg-slate-50 rounded-xl p-4 space-y-2">
-                      {order.items.map((item, i) => (
-                        <div key={i} className="flex justify-between text-sm text-slate-700">
-                          <span>{item.quantity}x <strong>{item.name}</strong></span>
-                          <span>{formatRWF(item.price * item.quantity)}</span>
-                        </div>
-                      ))}
+                      <select 
+                        value={order.status}
+                        onChange={(e) => updateOrderStatus(order.id, e.target.value)}
+                        className="bg-white border border-slate-200 text-sm font-medium py-2 px-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
+                      >
+                        <option value="pending">Pending</option>
+                        <option value="shipped">Shipped</option>
+                        <option value="completed">Completed</option>
+                        <option value="cancelled">Cancelled</option>
+                      </select>
                     </div>
                   </div>
                 ))}
@@ -253,34 +248,41 @@ const AdminDashboard = () => {
           </div>
         )}
 
-        {/* === TAB: PRODUCTS === */}
+        {/* --- TAB: PRODUCTS --- */}
         {activeTab === 'products' && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {products.map((product) => (
               <div key={product.id} className="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm hover:shadow-md transition group">
                 <div className="relative aspect-video bg-gray-100 overflow-hidden">
-                  <LazyImage src={product.image} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                  <div className="absolute top-2 right-2 bg-white/90 backdrop-blur px-2 py-1 rounded text-xs font-bold">
-                    {product.stock} in stock
-                  </div>
+                  <LazyImage src={product.image} alt={product.name} className="w-full h-full object-cover" />
                 </div>
                 <div className="p-4">
-                  <h3 className="font-bold text-slate-900 mb-1">{product.name}</h3>
+                  <h3 className="font-bold text-slate-900 mb-1 line-clamp-1">{product.name}</h3>
                   <p className="text-slate-500 text-sm mb-4">{formatRWF(product.price)}</p>
                   <div className="flex gap-2">
-                    <button 
-                      onClick={() => handleEditProduct(product)}
-                      className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2 rounded-lg text-sm transition"
-                    >
-                      Edit
-                    </button>
-                    <button 
-                      onClick={() => handleDeleteProduct(product.id)}
-                      className="px-3 bg-red-50 hover:bg-red-100 text-red-500 rounded-lg transition"
-                    >
-                      🗑️
-                    </button>
+                    <button onClick={() => handleEditProduct(product)} className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2 rounded-lg text-sm">Edit</button>
+                    <button onClick={() => handleDeleteProduct(product.id)} className="px-3 bg-red-50 hover:bg-red-100 text-red-500 rounded-lg">🗑️</button>
                   </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* --- TAB: CATEGORIES (FIXED) --- */}
+        {activeTab === 'categories' && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {categories.map((cat) => (
+              <div key={cat.id} className="bg-white rounded-2xl border border-slate-100 p-6 flex flex-col items-center text-center hover:shadow-md transition">
+                <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center text-3xl mb-4">
+                  {cat.image ? (
+                    <img src={cat.image} alt={cat.name} className="w-full h-full rounded-full object-cover" />
+                  ) : cat.icon}
+                </div>
+                <h3 className="font-bold text-slate-900">{cat.name}</h3>
+                <div className="mt-4 flex gap-2 w-full">
+                   <button onClick={() => handleEditCategory(cat)} className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 py-1 rounded text-xs font-bold">Edit</button>
+                   <button onClick={() => handleDeleteCategory(cat.id)} className="px-2 bg-red-50 text-red-500 rounded text-xs">✕</button>
                 </div>
               </div>
             ))}
@@ -289,76 +291,43 @@ const AdminDashboard = () => {
 
       </main>
 
-      {/* === MODALS (Simplifed for brevity - paste your form fields here or ask for the full Modal code if needed) === */}
+      {/* === PRODUCT MODAL === */}
       {showProductModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl p-8 animate-fade-in-up">
+          <div className="bg-white rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl p-8">
             <h2 className="text-2xl font-black text-slate-900 mb-6">{editingProduct ? 'Edit Product' : 'New Product'}</h2>
-            
             <div className="space-y-4">
-               {/* NAME */}
+               {/* Simplified Form Fields */}
+               <div><label className="text-xs font-bold text-slate-500 uppercase">Name</label><input value={productForm.name} onChange={e => setProductForm({...productForm, name: e.target.value})} className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200" /></div>
+               <div><label className="text-xs font-bold text-slate-500 uppercase">Price</label><input type="number" value={productForm.price} onChange={e => setProductForm({...productForm, price: e.target.value})} className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200" /></div>
+               <div><label className="text-xs font-bold text-slate-500 uppercase">Stock</label><input type="number" value={productForm.stock} onChange={e => setProductForm({...productForm, stock: e.target.value})} className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200" /></div>
                <div>
-                 <label className="block text-sm font-bold text-slate-700 mb-1">Name</label>
-                 <input 
-                   value={productForm.name} 
-                   onChange={e => setProductForm({...productForm, name: e.target.value})}
-                   className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-900"
-                   placeholder="Product Name"
-                 />
+                 <label className="text-xs font-bold text-slate-500 uppercase">Image URL</label>
+                 <input value={productForm.image} onChange={e => {setProductForm({...productForm, image: e.target.value}); setImagePreview(e.target.value)}} className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200" />
+                 {imagePreview && <img src={imagePreview} className="mt-2 w-20 h-20 rounded-lg object-cover" />}
                </div>
-               
-               {/* PRICE & STOCK GRID */}
-               <div className="grid grid-cols-2 gap-4">
-                 <div>
-                   <label className="block text-sm font-bold text-slate-700 mb-1">Price</label>
-                   <input 
-                     type="number"
-                     value={productForm.price} 
-                     onChange={e => setProductForm({...productForm, price: e.target.value})}
-                     className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200"
-                     placeholder="0"
-                   />
-                 </div>
-                 <div>
-                   <label className="block text-sm font-bold text-slate-700 mb-1">Stock</label>
-                   <input 
-                     type="number"
-                     value={productForm.stock} 
-                     onChange={e => setProductForm({...productForm, stock: e.target.value})}
-                     className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200"
-                     placeholder="0"
-                   />
-                 </div>
-               </div>
-
-               {/* IMAGE URL */}
-               <div>
-                 <label className="block text-sm font-bold text-slate-700 mb-1">Image URL</label>
-                 <input 
-                   value={productForm.image} 
-                   onChange={e => { setProductForm({...productForm, image: e.target.value}); setImagePreview(e.target.value); }}
-                   className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200"
-                   placeholder="https://..."
-                 />
-                 {imagePreview && (
-                   <img src={imagePreview} alt="Preview" className="mt-2 w-24 h-24 object-cover rounded-xl border border-slate-200" />
-                 )}
-               </div>
-
-               {/* BUTTONS */}
                <div className="flex justify-end gap-3 pt-4">
-                 <button 
-                   onClick={() => setShowProductModal(false)}
-                   className="px-6 py-3 rounded-xl font-bold text-slate-500 hover:bg-slate-100"
-                 >
-                   Cancel
-                 </button>
-                 <button 
-                   onClick={handleSaveProduct}
-                   className="px-6 py-3 rounded-xl font-bold bg-slate-900 text-white hover:bg-slate-800 shadow-lg"
-                 >
-                   Save Product
-                 </button>
+                 <button onClick={() => setShowProductModal(false)} className="px-6 py-3 rounded-xl font-bold text-slate-500 hover:bg-slate-100">Cancel</button>
+                 <button onClick={handleSaveProduct} className="px-6 py-3 rounded-xl font-bold bg-slate-900 text-white hover:bg-slate-800 shadow-lg">Save</button>
+               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* === CATEGORY MODAL === */}
+      {showCategoryModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl p-8">
+            <h2 className="text-2xl font-black text-slate-900 mb-6">{editingCategory ? 'Edit Category' : 'New Category'}</h2>
+            <div className="space-y-4">
+               <div><label className="text-xs font-bold text-slate-500 uppercase">Name (English)</label><input value={categoryForm.name} onChange={e => setCategoryForm({...categoryForm, name: e.target.value})} className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200" /></div>
+               <div><label className="text-xs font-bold text-slate-500 uppercase">Name (Kinyarwanda)</label><input value={categoryForm.nameRw} onChange={e => setCategoryForm({...categoryForm, nameRw: e.target.value})} className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200" /></div>
+               <div><label className="text-xs font-bold text-slate-500 uppercase">Emoji Icon</label><input value={categoryForm.icon} onChange={e => setCategoryForm({...categoryForm, icon: e.target.value})} className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200" placeholder="🏊" /></div>
+               
+               <div className="flex justify-end gap-3 pt-4">
+                 <button onClick={() => setShowCategoryModal(false)} className="px-6 py-3 rounded-xl font-bold text-slate-500 hover:bg-slate-100">Cancel</button>
+                 <button onClick={handleSaveCategory} className="px-6 py-3 rounded-xl font-bold bg-slate-900 text-white hover:bg-slate-800 shadow-lg">Save</button>
                </div>
             </div>
           </div>
