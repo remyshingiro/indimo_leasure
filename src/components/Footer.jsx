@@ -42,10 +42,11 @@ const Footer = () => {
   const t = translations[language]
 
   return (
-    <footer className="relative bg-slate-900 text-white mt-auto">
+    // FIX ADDED HERE: mt-24 lg:mt-32 pushes the footer down to create space for the wave
+    <footer className="relative bg-slate-900 text-white mt-auto mt-24 lg:mt-32">
       
-      {/* === 1. TOP WAVE TRANSITION (Fixed Height) === */}
-      {/* Changed -mt-16 to -mt-8 (pulls up less) and h-[65px] to h-[35px] (shorter wave) */}
+      {/* === 1. TOP WAVE TRANSITION === */}
+      {/* Shortened wave with safe negative margins to prevent overlapping text */}
       <div className="absolute top-0 left-0 right-0 -mt-8 md:-mt-16 w-full overflow-hidden leading-[0] transform rotate-180 z-10 pointer-events-none">
         <svg className="relative block w-[calc(100%+1.3px)] h-[35px] md:h-[70px]" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 120" preserveAspectRatio="none">
           <path d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V0H0V27.35A600.21,600.21,0,0,0,321.39,56.44Z" className="fill-slate-900"></path>
@@ -161,7 +162,7 @@ const Footer = () => {
             </ul>
           </div>
 
-          {/* Payment Methods - Badges Style */}
+          {/* Payment Methods */}
           <div>
             <h4 className="font-bold text-lg mb-6 text-white">{t.paymentMethods}</h4>
             <div className="flex flex-wrap gap-3">
