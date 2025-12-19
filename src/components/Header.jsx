@@ -1,53 +1,31 @@
-import { Link, useNavigate } from 'react-router-dom'
 import { useState, useEffect, useRef } from 'react'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import useCartStore from '../stores/cartStore'
 import useLanguageStore from '../stores/languageStore'
 import useAuthStore from '../stores/authStore'
 import useCategoryStore from '../stores/categoryStore'
-import useProductStore from '../stores/productStore'
 
 const Header = () => {
-  const navigate = useNavigate()
-  const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const [isSearchOpen, setIsSearchOpen] = useState(false)
-  const [isAccountOpen, setIsAccountOpen] = useState(false)
-  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
-  const [isCategoriesOpen, setIsCategoriesOpen] = useState(false)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [searchResults, setSearchResults] = useState([])
-  
-  const itemCount = useCartStore((state) => state.getItemCount())
-  const language = useLanguageStore((state) => state.language)
-  const setLanguage = useLanguageStore((state) => state.setLanguage)
-  const user = useAuthStore((state) => state.user)
-  const signOut = useAuthStore((state) => state.signOut)
-  const categories = useCategoryStore((state) => state.categories)
-  const searchProducts = useProductStore((state) => state.searchProducts)
-  
-  const searchRef = useRef(null)
-  const accountRef = useRef(null)
-  const notificationsRef = useRef(null)
-  const categoriesRef = useRef(null)
-
-  const toggleLanguage = () => {
-    setLanguage(language === 'en' ? 'rw' : 'en')
-  }
-
-  // Handle search
-  useEffect(() => {
-    if (searchQuery.trim()) {
-      const results = searchProducts(searchQuery).slice(0, 5)
-      setSearchResults(results)
-    } else {
-      setSearchResults([])
-    }
-  }, [searchQuery, searchProducts])
-
-// --- NEW CODE START ---
   const [isScrolled, setIsScrolled] = useState(false)
-  const [isCartAnimating, setIsCartAnimating] = useState(false)
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [showNotifications, setShowNotifications] = useState(false)
+  const [showUserMenu, setShowUserMenu] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  
+  // Stores
+  const cartItems = useCartStore((state) => state.items)
+  const { language, setLanguage } = useLanguageStore()
+  const { user, logout } = useAuthStore()
+  const categories = useCategoryStore((state) => state.categories)
 
-  // Detect Scroll
+  const navigate = useNavigate()
+  const location = useLocation()
+  
+  // Refs for click-outside detection
+  const notifRef = useRef(null)
+  const userRef = useRef(null)
+
+  // 1. SCROLL EFFECT: Detect scroll to change background
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 20)
@@ -56,478 +34,316 @@ const Header = () => {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
-  // Trigger Cart Bump Animation when items change
-  useEffect(() => {
-    if (itemCount === 0) return
-    setIsCartAnimating(true)
-    const timer = setTimeout(() => setIsCartAnimating(false), 300)
-    return () => clearTimeout(timer)
-  }, [itemCount])
-  // --- NEW CODE END ---
-
-  // Close dropdowns when clicking outside
+  // 2. CLICK OUTSIDE: Close dropdowns when clicking elsewhere
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (accountRef.current && !accountRef.current.contains(event.target)) {
-        setIsAccountOpen(false)
+      if (notifRef.current && !notifRef.current.contains(event.target)) {
+        setShowNotifications(false)
       }
-      if (notificationsRef.current && !notificationsRef.current.contains(event.target)) {
-        setIsNotificationsOpen(false)
-      }
-      if (categoriesRef.current && !categoriesRef.current.contains(event.target)) {
-        setIsCategoriesOpen(false)
-      }
-      if (searchRef.current && !searchRef.current.contains(event.target)) {
-        setIsSearchOpen(false)
+      if (userRef.current && !userRef.current.contains(event.target)) {
+        setShowUserMenu(false)
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
+  // Close mobile menu on route change
+  useEffect(() => {
+    setIsMobileMenuOpen(false)
+  }, [location])
+
   const handleSearch = (e) => {
     e.preventDefault()
     if (searchQuery.trim()) {
       navigate(`/products?search=${encodeURIComponent(searchQuery)}`)
-      setIsSearchOpen(false)
-      setSearchQuery('')
     }
   }
 
-  const handleSignOut = () => {
-    signOut()
-    setIsAccountOpen(false)
-    navigate('/')
-  }
-
-  // Mock notifications (in production, this would come from a store/API)
-  const notifications = [
-    { id: 1, message: 'Your order #12345 has been shipped', time: '2 hours ago' },
-    { id: 2, message: 'New products available in your favorite category', time: '1 day ago' }
-  ]
-
+  // Helper to determine if we are on the home page (for transparent effect)
+  const isHome = location.pathname === '/'
 
   return (
-    <header 
-  className={`sticky top-0 z-50 transition-all duration-300 ease-in-out border-b ${
-    isScrolled 
-      ? 'bg-white/30 backdrop-blur-xl py-2 shadow-md border-gray-200'  // Scrolled: Compact & Solid
-      : 'bg-white/30 backdrop-blur-md py-3 md:py-5 border-transparent'         // Top: Tall & Glassy
-  }`}
-    >
-      {/* <div className="container mx-auto px-4"> */}
-      <div className="container mx-auto px-4 overflow-x-hidden">
-        {/* <div className="flex items-center justify-between h-16"> */}
-        <div className="flex items-center justify-between h-16 w-full">
-          {/* Logo */}
-          <Link 
-            to="/" 
-            className="flex items-center space-x-2 group flex-shrink-0"
-            aria-label={language === 'en' ? 'Kigali Swim Shop Home' : 'Ahabanza Kigali Swim Shop'}
-          >
-            <span className="text-2xl animate-float-slow" aria-hidden="true">🏊</span>
-              <span className={`font-bold text-primary-600 tracking-tight group-hover:text-primary-700 transition-all duration-300 ${
-                  isScrolled ? 'text-xl' : 'text-2xl'
-              }`}>
-              {language === 'en' ? 'KSS' : 'Ubwoba bw\'amazi Kigali'}
-            </span>
-          </Link>
+    <>
+      {/* We make the header 'fixed' so it stays on top. */}
+      <header 
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+          isScrolled || !isHome 
+            ? 'bg-white/90 backdrop-blur-md shadow-sm py-3' 
+            : 'bg-transparent py-5'
+        }`}
+      >
+        <div className="container mx-auto px-4">
+          <div className="flex items-center justify-between gap-4">
+            
+            {/* === LOGO === */}
+            <Link to="/" className="flex items-center gap-2 group">
+              <span className="text-3xl filter drop-shadow-lg group-hover:scale-110 transition-transform duration-300">🏊</span>
+              <div className={`font-black text-xl tracking-tighter leading-none ${isScrolled || !isHome ? 'text-slate-900' : 'text-white'}`}>
+                KIGALI<br />
+                <span className={isScrolled || !isHome ? 'text-sky-600' : 'text-sky-300'}>SWIM</span>
+              </div>
+            </Link>
 
-            {/* Search Bar - Desktop */}
-          <div className="hidden md:block flex-1 max-w-2xl mx-8" ref={searchRef}>
-          {/* <div className="hidden md:flex-1 md:max-w-xl md:mx-4 lg:mx-8 flex-shrink" ref={searchRef}> */}
-            <form onSubmit={handleSearch} className="relative" role="search">
-              <label htmlFor="search-input" className="sr-only">
-                {language === 'en' ? 'Search products' : 'Shakisha ibicuruzwa'}
-              </label>
-              <input
-                id="search-input"
-                type="text"
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value)
-                  setIsSearchOpen(true)
-                }}
-                onFocus={() => setIsSearchOpen(true)}
-                placeholder={language === 'en' ? 'Search products...' : 'Shakisha ibicuruzwa...'}
-                className="w-full px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                aria-label={language === 'en' ? 'Search products' : 'Shakisha ibicuruzwa'}
-                aria-autocomplete="list"
-                aria-expanded={isSearchOpen && searchResults.length > 0}
-                aria-controls="search-results"
-              />
-              <svg
-                className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
+            {/* === DESKTOP NAVIGATION === */}
+            <div className="hidden lg:flex items-center gap-8">
               
-              {/* Search Results Dropdown */}
-              {isSearchOpen && searchResults.length > 0 && (
-                <div 
-                  id="search-results"
-                  className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-96 overflow-y-auto z-50"
-                  role="listbox"
-                  aria-label={language === 'en' ? 'Search results' : 'Ibyabonetse'}
+              {/* Categories Dropdown (Hover) */}
+              <div className="relative group">
+                <button className={`font-bold text-sm uppercase tracking-wide py-2 ${
+                  isScrolled || !isHome ? 'text-slate-600 hover:text-sky-600' : 'text-white/90 hover:text-white'
+                }`}>
+                  {language === 'en' ? 'Categories' : 'Ibyiciro'} ▾
+                </button>
+                
+                {/* The Dropdown Menu */}
+                <div className="absolute top-full left-0 w-64 pt-4 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform group-hover:translate-y-0 translate-y-2">
+                  <div className="bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden p-2">
+                    {categories.map((cat) => (
+                      <Link 
+                        key={cat.id} 
+                        to={`/products?category=${cat.id}`}
+                        className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-50 transition-colors group/item"
+                      >
+                        <span className="text-xl bg-slate-100 w-8 h-8 flex items-center justify-center rounded-full group-hover/item:bg-sky-100 transition-colors">
+                          {cat.icon}
+                        </span>
+                        <span className="font-semibold text-slate-700 group-hover/item:text-sky-600">
+                          {language === 'en' ? cat.name : cat.nameRw}
+                        </span>
+                      </Link>
+                    ))}
+                    <div className="border-t border-slate-100 mt-2 pt-2">
+                      <Link to="/products" className="block px-4 py-2 text-center text-xs font-bold text-sky-600 hover:underline">
+                        {language === 'en' ? 'View All Products' : 'Reba Byose'}
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <Link to="/products" className={`font-bold text-sm uppercase tracking-wide ${
+                isScrolled || !isHome ? 'text-slate-600 hover:text-sky-600' : 'text-white/90 hover:text-white'
+              }`}>
+                {language === 'en' ? 'Shop' : 'Gura'}
+              </Link>
+            </div>
+
+            {/* === SEARCH BAR === */}
+            <div className="hidden md:flex flex-1 max-w-md mx-4">
+              <form onSubmit={handleSearch} className="w-full relative group">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder={language === 'en' ? "Search for gear..." : "Shakisha..."}
+                  className={`w-full pl-10 pr-4 py-2.5 rounded-full border focus:outline-none focus:ring-2 focus:ring-sky-500 transition-all ${
+                    isScrolled || !isHome 
+                      ? 'bg-slate-100 border-transparent focus:bg-white' 
+                      : 'bg-white/10 border-white/20 text-white placeholder-white/60 focus:bg-white focus:text-slate-900 focus:placeholder-slate-400'
+                  }`}
+                />
+                <button type="submit" className={`absolute left-3 top-1/2 -translate-y-1/2 ${
+                  isScrolled || !isHome ? 'text-slate-400' : 'text-white/70 group-focus-within:text-slate-400'
+                }`}>
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                </button>
+              </form>
+            </div>
+
+            {/* === ICONS AREA === */}
+            <div className="flex items-center gap-2 sm:gap-4">
+              
+              {/* Language Switcher */}
+              <button 
+                onClick={() => setLanguage(language === 'en' ? 'rw' : 'en')}
+                className={`w-8 h-8 flex items-center justify-center rounded-full font-bold text-xs transition-colors ${
+                  isScrolled || !isHome 
+                    ? 'bg-slate-100 text-slate-700 hover:bg-slate-200' 
+                    : 'bg-white/20 text-white hover:bg-white/30'
+                }`}
+              >
+                {language === 'en' ? 'RW' : 'EN'}
+              </button>
+
+              {/* Notification Icon */}
+              <div className="relative" ref={notifRef}>
+                <button 
+                  onClick={() => setShowNotifications(!showNotifications)}
+                  className={`p-2 rounded-full transition-colors relative ${
+                    isScrolled || !isHome 
+                      ? 'text-slate-600 hover:bg-slate-100' 
+                      : 'text-white hover:bg-white/20'
+                  }`}
                 >
-                  {searchResults.map((product) => (
-                    <Link
-                      key={product.id}
-                      to={`/products/${product.slug}`}
-                      onClick={() => {
-                        setIsSearchOpen(false)
-                        setSearchQuery('')
-                      }}
-                      className="flex items-center p-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
-                      role="option"
-                      aria-label={language === 'en' ? product.name : product.nameRw}
-                    >
-                      {product.image ? (
-                        <img
-                          src={product.image}
-                          alt={product.name}
-                          className="w-12 h-12 object-cover rounded mr-3"
-                          onError={(e) => {
-                            e.target.style.display = 'none'
-                          }}
-                        />
-                      ) : (
-                        <div className="w-12 h-12 bg-gray-200 rounded mr-3 flex items-center justify-center">
-                          <span className="text-xl">🏊</span>
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
+                  <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>
+                </button>
+
+                {/* Notification Dropdown */}
+                {showNotifications && (
+                  <div className="absolute top-full right-0 mt-2 w-80 bg-white rounded-xl shadow-2xl border border-slate-100 overflow-hidden z-50 animate-fade-in-up">
+                    <div className="p-4 border-b border-slate-50 bg-slate-50/50 flex justify-between items-center">
+                      <span className="font-bold text-slate-800">Notifications</span>
+                      <span className="text-xs text-sky-600 font-bold">Mark all read</span>
+                    </div>
+                    <div className="max-h-64 overflow-y-auto">
+                      {[1, 2].map((i) => (
+                        <div key={i} className="p-4 hover:bg-slate-50 transition border-b border-slate-50 last:border-0">
+                          <p className="text-sm text-slate-800 font-medium">Order #123{i} shipped!</p>
+                          <p className="text-xs text-slate-500 mt-1">Your swimming gear is on the way.</p>
                         </div>
-                      )}
-                      <div className="flex-1">
-                        <p className="font-medium text-gray-800">{language === 'en' ? product.name : product.nameRw}</p>
-                        <p className="text-sm text-gray-600">{product.brand}</p>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Cart Icon */}
+              <Link 
+                to="/cart" 
+                className={`p-2 rounded-full transition-colors relative ${
+                  isScrolled || !isHome 
+                    ? 'text-slate-600 hover:bg-slate-100' 
+                    : 'text-white hover:bg-white/20'
+                }`}
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>
+                {cartItems.length > 0 && (
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-sky-500 text-white text-xs font-bold flex items-center justify-center rounded-full border-2 border-white">
+                    {cartItems.length}
+                  </span>
+                )}
+              </Link>
+
+              {/* User Menu */}
+              {user ? (
+                <div className="relative" ref={userRef}>
+                  <button 
+                    onClick={() => setShowUserMenu(!showUserMenu)}
+                    className="w-9 h-9 rounded-full bg-gradient-to-tr from-sky-400 to-primary-600 p-0.5"
+                  >
+                    <div className="w-full h-full rounded-full bg-white flex items-center justify-center overflow-hidden">
+                       <span className="text-sm font-bold text-slate-700">
+                          {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
+                       </span>
+                    </div>
+                  </button>
+                  
+                  {showUserMenu && (
+                    <div className="absolute top-full right-0 mt-2 w-56 bg-white rounded-xl shadow-2xl border border-slate-100 overflow-hidden z-50 animate-fade-in-up">
+                      <div className="p-4 border-b border-slate-50 bg-slate-50/50">
+                        <p className="font-bold text-slate-800 truncate">{user.name}</p>
+                        <p className="text-xs text-slate-500 truncate">{user.email}</p>
                       </div>
+                      <div className="p-2">
+                        <Link to="/profile" className="block px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 rounded-lg hover:text-sky-600">
+                          {language === 'en' ? 'My Profile' : 'Profayili Yanjye'}
+                        </Link>
+                        <Link to="/orders" className="block px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 rounded-lg hover:text-sky-600">
+                          {language === 'en' ? 'My Orders' : 'Amabwiriza Yanjye'}
+                        </Link>
+                        <button 
+                          onClick={() => { logout(); setShowUserMenu(false); }}
+                          className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-red-50 rounded-lg"
+                        >
+                          {language === 'en' ? 'Logout' : 'Sohoka'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <Link 
+                  to="/login"
+                  className={`hidden sm:block px-5 py-2 rounded-full font-bold text-sm transition-transform hover:scale-105 ${
+                    isScrolled || !isHome 
+                      ? 'bg-slate-900 text-white hover:bg-slate-800' 
+                      : 'bg-white text-slate-900 hover:bg-sky-50'
+                  }`}
+                >
+                  {language === 'en' ? 'Login' : 'Injira'}
+                </Link>
+              )}
+
+              {/* Mobile Menu Button */}
+              <button 
+                className={`lg:hidden p-2 ${isScrolled || !isHome ? 'text-slate-900' : 'text-white'}`}
+                onClick={() => setIsMobileMenuOpen(true)}
+              >
+                <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" /></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* === MOBILE MENU SLIDEOUT === */}
+      <div className={`fixed inset-0 z-[60] lg:hidden transition-opacity duration-300 ${isMobileMenuOpen ? 'opacity-100 visible' : 'opacity-0 invisible'}`}>
+        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsMobileMenuOpen(false)}></div>
+        <div className={`absolute top-0 right-0 h-full w-80 bg-white shadow-2xl transform transition-transform duration-300 ${isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+          <div className="flex flex-col h-full">
+            <div className="p-5 flex items-center justify-between border-b border-slate-100">
+              <span className="font-black text-xl text-slate-900">MENU</span>
+              <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 text-slate-400 hover:text-red-500">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+
+            <div className="p-5 overflow-y-auto flex-1 space-y-6">
+              <form onSubmit={handleSearch} className="relative">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search products..."
+                  className="w-full pl-10 pr-4 py-3 bg-slate-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500"
+                />
+                <svg className="w-5 h-5 text-slate-400 absolute left-3 top-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+              </form>
+
+              <div className="space-y-4">
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Categories</p>
+                <div className="grid grid-cols-2 gap-3">
+                  {categories.map((cat) => (
+                    <Link 
+                      key={cat.id} 
+                      to={`/products?category=${cat.id}`}
+                      className="flex flex-col items-center justify-center p-4 rounded-xl bg-slate-50 hover:bg-sky-50 transition border border-slate-100"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      <span className="text-2xl mb-2">{cat.icon}</span>
+                      <span className="text-xs font-bold text-slate-700 text-center">{language === 'en' ? cat.name : cat.nameRw}</span>
                     </Link>
                   ))}
                 </div>
-              )}
-            </form>
-          </div>
+              </div>
 
-          {/* Desktop Navigation */}
-          {/* <nav className="hidden lg:flex items-center space-x-6 text-sm font-medium"> */}
-          <nav className="hidden lg:flex flex-grow items-center space-x-6 text-sm font-medium min-w-0">
-            <Link
-              to="/"
-              className="relative text-gray-700 hover:text-primary-600 transition-colors after:absolute after:left-0 after:-bottom-1 after:h-0.5 after:w-0 after:bg-primary-500 after:transition-all hover:after:w-full"
-            >
-              {language === 'en' ? 'Home' : 'Ahabanza'}
-            </Link>
-            
-            {/* Categories with Mega Menu */}
-            <div className="relative" ref={categoriesRef}>
-              <button
-                onMouseEnter={() => setIsCategoriesOpen(true)}
-                className="relative text-gray-700 hover:text-primary-600 transition-colors after:absolute after:left-0 after:-bottom-1 after:h-0.5 after:w-0 after:bg-primary-500 after:transition-all hover:after:w-full"
-              >
-                {language === 'en' ? 'Categories' : 'Ubwoko'}
-              </button>
-              
-              {isCategoriesOpen && (
-                <div
-                  className="absolute top-full left-0 mt-2 w-96 bg-white border border-gray-200 rounded-lg shadow-xl p-6 z-50"
-                  onMouseLeave={() => setIsCategoriesOpen(false)}
-                >
-                  <div className="grid grid-cols-2 gap-4">
-                    {categories.map((category) => (
-                      <Link
-                        key={category.id}
-                        to={`/products?category=${category.id}`}
-                        onClick={() => setIsCategoriesOpen(false)}
-                        className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-50 transition"
-                      >
-                        {category.image ? (
-                          <img
-                            src={category.image}
-                            alt={category.name}
-                            className="w-12 h-12 object-cover rounded"
-                            onError={(e) => {
-                              e.target.style.display = 'none'
-                              e.target.nextSibling.style.display = 'flex'
-                            }}
-                          />
-                        ) : null}
-                        <div className={`flex items-center justify-center w-12 h-12 bg-primary-50 rounded ${category.image ? 'hidden' : ''}`}>
-                          <span className="text-2xl">{category.icon}</span>
-                        </div>
-                        <div>
-                          <p className="font-semibold text-gray-800">{language === 'en' ? category.name : category.nameRw}</p>
-                        </div>
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-            
-            <Link
-              to="/about"
-              className="relative text-gray-700 hover:text-primary-600 transition-colors after:absolute after:left-0 after:-bottom-1 after:h-0.5 after:w-0 after:bg-primary-500 after:transition-all hover:after:w-full"
-            >
-              {language === 'en' ? 'About' : 'Ibyerekeye'}
-            </Link>
-            <Link
-              to="/contact"
-              className="relative text-gray-700 hover:text-primary-600 transition-colors after:absolute after:left-0 after:-bottom-1 after:h-0.5 after:w-0 after:bg-primary-500 after:transition-all hover:after:w-full"
-            >
-              {language === 'en' ? 'Contact' : 'Twandikire'}
-            </Link>
-          </nav>
-
-          {/* Right side actions */}
-          {/* <div className="flex items-center space-x-2 md:space-x-4"> */}
-          <div className="flex items-center space-x-2 md:space-x-4 flex-shrink-0">
-            {/* Search - Mobile */}
-            <button
-              onClick={() => navigate('/products')}
-              className="md:hidden p-2 text-gray-700 hover:text-primary-600"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </button>
-
-            {/* Language Toggle */}
-            <button
-              onClick={toggleLanguage}
-              className="px-3 py-1 text-xs font-semibold border border-primary-100 rounded-full bg-white/80 shadow-sm hover:bg-primary-50 hover:border-primary-300 text-primary-700 transition-all"
-            >
-              {language === 'en' ? 'RW' : 'EN'}
-            </button>
-
-            {/* Wishlist */}
-            <Link
-              to="/wishlist"
-              className="relative p-2 text-gray-700 hover:text-primary-600 transition-transform hover:-translate-y-0.5 hidden md:block"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-              </svg>
-            </Link>
-
-            {/* Notifications */}
-            <div className="relative hidden md:block" ref={notificationsRef}>
-              <button
-                onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
-                className="relative p-2 text-gray-700 hover:text-primary-600 transition-transform hover:-translate-y-0.5"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                </svg>
-                {notifications.length > 0 && (
-                  <span className="absolute top-0 right-0 bg-red-500 text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center">
-                    {notifications.length}
-                  </span>
-                )}
-              </button>
-              
-              {isNotificationsOpen && (
-                <div className="absolute right-0 top-full mt-2 w-80 bg-white border border-gray-200 rounded-lg shadow-xl z-50">
-                  <div className="p-4 border-b border-gray-200">
-                    <h3 className="font-semibold text-gray-800">
-                      {language === 'en' ? 'Notifications' : 'Amakuru'}
-                    </h3>
-                  </div>
-                  <div className="max-h-96 overflow-y-auto">
-                    {notifications.length > 0 ? (
-                      notifications.map((notif) => (
-                        <div key={notif.id} className="p-4 border-b border-gray-100 hover:bg-gray-50">
-                          <p className="text-sm text-gray-800">{notif.message}</p>
-                          <p className="text-xs text-gray-500 mt-1">{notif.time}</p>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="p-4 text-center text-gray-500 text-sm">
-                        {language === 'en' ? 'No notifications' : 'Nta makuru'}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
+              <div className="space-y-1">
+                <Link to="/" className="block px-4 py-3 rounded-xl hover:bg-slate-50 font-medium text-slate-700">Home</Link>
+                <Link to="/products" className="block px-4 py-3 rounded-xl hover:bg-slate-50 font-medium text-slate-700">All Products</Link>
+                <Link to="/cart" className="block px-4 py-3 rounded-xl hover:bg-slate-50 font-medium text-slate-700">
+                   Cart ({cartItems.length})
+                </Link>
+              </div>
             </div>
 
-            {/* Account Dropdown */}
-            <div className="relative" ref={accountRef}>
-              <button
-                onClick={() => setIsAccountOpen(!isAccountOpen)}
-                className="flex items-center space-x-2 p-2 text-gray-700 hover:text-primary-600 transition"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-              </button>
-              
-              {isAccountOpen && (
-                <div className="absolute right-0 top-full mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-xl z-50">
-                  {user ? (
-                    <>
-                      <div className="p-4 border-b border-gray-200">
-                        <p className="font-semibold text-gray-800">{user.name}</p>
-                        <p className="text-sm text-gray-600">{user.email}</p>
-                      </div>
-                      <Link
-                        to="/profile"
-                        onClick={() => setIsAccountOpen(false)}
-                        className="block px-4 py-2 text-gray-700 hover:bg-gray-50"
-                      >
-                        {language === 'en' ? 'My Profile' : 'Profil Yanjye'}
-                      </Link>
-                      <Link
-                        to="/profile"
-                        onClick={() => setIsAccountOpen(false)}
-                        className="block px-4 py-2 text-gray-700 hover:bg-gray-50"
-                      >
-                        {language === 'en' ? 'Order History' : 'Amateka y\'Amabwiriza'}
-                      </Link>
-                      <Link
-                        to="/wishlist"
-                        onClick={() => setIsAccountOpen(false)}
-                        className="block px-4 py-2 text-gray-700 hover:bg-gray-50"
-                      >
-                        {language === 'en' ? 'Wishlist' : 'Ibyifuzo'}
-                      </Link>
-                      <button
-                        onClick={handleSignOut}
-                        className="block w-full text-left px-4 py-2 text-red-600 hover:bg-gray-50"
-                      >
-                        {language === 'en' ? 'Sign Out' : 'Sohoka'}
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <Link
-                        to="/signin"
-                        onClick={() => setIsAccountOpen(false)}
-                        className="block px-4 py-2 text-gray-700 hover:bg-gray-50"
-                      >
-                        {language === 'en' ? 'Sign In' : 'Injira'}
-                      </Link>
-                      <Link
-                        to="/signup"
-                        onClick={() => setIsAccountOpen(false)}
-                        className="block px-4 py-2 text-gray-700 hover:bg-gray-50"
-                      >
-                        {language === 'en' ? 'Sign Up' : 'Kwiyandikisha'}
-                      </Link>
-                    </>
-                  )}
-                </div>
+            <div className="p-5 border-t border-slate-100 bg-slate-50">
+              {!user ? (
+                <Link to="/login" className="block w-full bg-slate-900 text-white font-bold text-center py-3 rounded-xl">
+                  Login / Register
+                </Link>
+              ) : (
+                <button onClick={() => { logout(); setIsMobileMenuOpen(false); }} className="block w-full bg-red-50 text-red-500 font-bold text-center py-3 rounded-xl border border-red-100">
+                  Logout
+                </button>
               )}
             </div>
-
-            {/* Cart */}
-            <Link
-              to="/cart"
-              className="relative p-2 text-gray-700 hover:text-primary-600 transition-transform hover:-translate-y-0.5"
-              aria-label={language === 'en' ? `Shopping cart with ${itemCount} items` : `Gafuni ifite ibintu ${itemCount}`}
-            >
-              <svg 
-                className={`w-6 h-6 transition-transform duration-300 ${isCartAnimating ? 'scale-125 text-primary-600' : 'scale-100'}`} 
-                fill="none" 
-                stroke="currentColor" 
-                viewBox="0 0 24 24" 
-                aria-hidden="true">
-
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-              </svg>
-              {itemCount > 0 && (
-                <span 
-                  className="absolute -top-1 -right-1 bg-accent-500 text-white text-[10px] rounded-full w-5 h-5 flex items-center justify-center shadow-soft-glow animate-scale-in"
-                  aria-label={`${itemCount} ${language === 'en' ? 'items in cart' : 'ibintu mu gafuni'}`}
-                >
-                  {itemCount}
-                </span>
-              )}
-            </Link>
-
-            {/* Mobile Menu Button */}
-            <button
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="md:hidden p-2 text-gray-700"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                {isMenuOpen ? (
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                ) : (
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                )}
-              </svg>
-            </button>
           </div>
         </div>
-
-        {/* Mobile Menu */}
-        {isMenuOpen && (
-          <nav className="md:hidden py-4 border-t">
-            <Link
-              to="/"
-              className="block py-2 text-gray-700 hover:text-primary-600"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              {language === 'en' ? 'Home' : 'Ahabanza'}
-            </Link>
-            <Link
-              to="/products"
-              className="block py-2 text-gray-700 hover:text-primary-600"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              {language === 'en' ? 'Products' : 'Ibicuruzwa'}
-            </Link>
-            {categories.map((category) => (
-              <Link
-                key={category.id}
-                to={`/products?category=${category.id}`}
-                className="block py-2 pl-4 text-gray-600 hover:text-primary-600"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                {language === 'en' ? category.name : category.nameRw}
-              </Link>
-            ))}
-            <Link
-              to="/about"
-              className="block py-2 text-gray-700 hover:text-primary-600"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              {language === 'en' ? 'About' : 'Ibyerekeye'}
-            </Link>
-            <Link
-              to="/contact"
-              className="block py-2 text-gray-700 hover:text-primary-600"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              {language === 'en' ? 'Contact' : 'Twandikire'}
-            </Link>
-            {!user && (
-              <>
-                <Link
-                  to="/signin"
-                  className="block py-2 text-gray-700 hover:text-primary-600"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  {language === 'en' ? 'Sign In' : 'Injira'}
-                </Link>
-                <Link
-                  to="/signup"
-                  className="block py-2 text-gray-700 hover:text-primary-600"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  {language === 'en' ? 'Sign Up' : 'Kwiyandikisha'}
-                </Link>
-              </>
-            )}
-          </nav>
-        )}
       </div>
-    </header>
+    </>
   )
 }
 
 export default Header
-
-

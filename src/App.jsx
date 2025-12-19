@@ -7,9 +7,8 @@ import WhatsAppButton from './components/WhatsAppButton'
 import useAnalyticsStore from './stores/analyticsStore'
 import useAuthStore from './stores/authStore'
 import { getSessionId } from './utils/analytics'
-import { errorHandler } from './utils/errorHandler'
 
-// Lazy load pages for code splitting
+// Lazy load pages
 const Home = lazy(() => import('./pages/Home'))
 const Products = lazy(() => import('./pages/Products'))
 const ProductDetail = lazy(() => import('./pages/ProductDetail'))
@@ -36,7 +35,7 @@ const LoadingFallback = () => (
   </div>
 )
 
-// Component to track page views
+// Analytics Component
 const AnalyticsTracker = () => {
   const location = useLocation()
   const trackPageView = useAnalyticsStore((state) => state.trackPageView)
@@ -53,26 +52,40 @@ const AnalyticsTracker = () => {
   return null
 }
 
+// === NEW: Wrapper to handle Top Spacing dynamically ===
+const MainLayout = ({ children }) => {
+  const location = useLocation()
+  const isHome = location.pathname === '/'
+
+  return (
+    <main 
+      className={`flex-grow ${isHome ? '' : 'pt-28 lg:pt-32'}`} 
+      role="main"
+    >
+      {children}
+    </main>
+  )
+}
+
 function App() {
   const startSession = useAnalyticsStore((state) => state.startSession)
   const initAuth = useAuthStore((state) => state.init)
   const sessionId = getSessionId()
 
   useEffect(() => {
-    // Initialize auth store
     initAuth()
-    
-    // Start analytics session
     startSession(sessionId)
   }, [startSession, initAuth, sessionId])
 
   return (
     <ErrorBoundary>
       <Router>
-        <div className="flex flex-col min-h-screen">
+        <div className="flex flex-col min-h-screen bg-slate-50">
           <AnalyticsTracker />
           <Header />
-          <main className="flex-grow" role="main">
+          
+          {/* Use the new MainLayout wrapper */}
+          <MainLayout>
             <Suspense fallback={<LoadingFallback />}>
               <Routes>
                 <Route path="/" element={<Home />} />
@@ -93,7 +106,8 @@ function App() {
                 <Route path="/admin" element={<AdminDashboard />} />
               </Routes>
             </Suspense>
-          </main>
+          </MainLayout>
+          
           <Footer />
           <WhatsAppButton />
         </div>

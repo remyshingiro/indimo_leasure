@@ -1,256 +1,262 @@
-import { useState, useMemo } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
-import useLanguageStore from '../stores/languageStore'
-import useCategoryStore from '../stores/categoryStore'
+import { useState, useEffect, useMemo, useRef } from 'react'
+import { useSearchParams, Link } from 'react-router-dom'
 import useProductStore from '../stores/productStore'
-import useAnalyticsStore from '../stores/analyticsStore'
+import useCategoryStore from '../stores/categoryStore'
+import useCartStore from '../stores/cartStore'
+import useLanguageStore from '../stores/languageStore'
 import { formatRWF } from '../utils/currency'
+import LazyImage from '../components/LazyImage'
 
 const Products = () => {
   const [searchParams, setSearchParams] = useSearchParams()
-  const language = useLanguageStore((state) => state.language)
-  const categories = useCategoryStore((state) => state.categories)
+  const urlSearchQuery = searchParams.get('search') || ''
+  const urlCategory = searchParams.get('category')
+
   const products = useProductStore((state) => state.products)
-  const getProductsByCategory = useProductStore((state) => state.getProductsByCategory)
-  const searchProducts = useProductStore((state) => state.searchProducts)
-  const trackProductClick = useAnalyticsStore((state) => state.trackProductClick)
+  const categories = useCategoryStore((state) => state.categories)
+  const addItem = useCartStore((state) => state.addItem)
+  const language = useLanguageStore((state) => state.language)
+
+  const [selectedCategory, setSelectedCategory] = useState(urlCategory || 'all')
+  const [priceRange, setPriceRange] = useState([0, 1000000])
+  const [sortBy, setSortBy] = useState('newest')
+  const [showPriceFilter, setShowPriceFilter] = useState(false)
   
-  const categoryFilter = searchParams.get('category') || ''
-  const searchQuery = searchParams.get('search') || ''
-  const [priceRange, setPriceRange] = useState([0, 100000])
-  const [selectedBrand, setSelectedBrand] = useState('')
-  const [showFilters, setShowFilters] = useState(false)
+  const filterRef = useRef(null)
 
-  // Get unique brands
-  const brands = useMemo(() => {
-    const uniqueBrands = [...new Set(products.map(p => p.brand).filter(Boolean))]
-    return uniqueBrands.sort()
-  }, [products])
+  useEffect(() => {
+    if (urlCategory) {
+      setSelectedCategory(urlCategory)
+    }
+  }, [urlCategory])
 
-  // Filter products
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (filterRef.current && !filterRef.current.contains(event.target)) {
+        setShowPriceFilter(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
   const filteredProducts = useMemo(() => {
-    let filtered = categoryFilter 
-      ? getProductsByCategory(categoryFilter)
-      : products
+    return products.filter((product) => {
+      const matchesSearch = product.name.toLowerCase().includes(urlSearchQuery.toLowerCase()) ||
+                          product.description.toLowerCase().includes(urlSearchQuery.toLowerCase())
+      const matchesCategory = selectedCategory === 'all' || product.category === selectedCategory
+      const matchesPrice = product.price >= priceRange[0] && product.price <= priceRange[1]
+      return matchesSearch && matchesCategory && matchesPrice
+    }).sort((a, b) => {
+      if (sortBy === 'price-low') return a.price - b.price
+      if (sortBy === 'price-high') return b.price - a.price
+      return b.id - a.id
+    })
+  }, [products, urlSearchQuery, selectedCategory, priceRange, sortBy])
 
-    if (searchQuery) {
-      filtered = searchProducts(searchQuery).filter(p => 
-        !categoryFilter || p.category === categoryFilter
-      )
-    }
-
-    if (selectedBrand) {
-      filtered = filtered.filter(p => p.brand === selectedBrand)
-    }
-
-    filtered = filtered.filter(p => 
-      p.price >= priceRange[0] && p.price <= priceRange[1]
-    )
-
-    return filtered
-  }, [categoryFilter, searchQuery, selectedBrand, priceRange, products, getProductsByCategory, searchProducts])
-
-  const handleSearch = (e) => {
-    e.preventDefault()
-    const formData = new FormData(e.target)
-    const query = formData.get('search')
-    if (query) {
-      setSearchParams({ search: query, ...(categoryFilter && { category: categoryFilter }) })
-    } else {
-      setSearchParams(categoryFilter ? { category: categoryFilter } : {})
-    }
+  const handleCategoryClick = (catId) => {
+    setSelectedCategory(catId)
+    setSearchParams(prev => {
+      if (catId === 'all') {
+        prev.delete('category')
+      } else {
+        prev.set('category', catId)
+      }
+      return prev
+    })
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="flex flex-col md:flex-row gap-8">
-        {/* Filters Sidebar */}
-        <aside className={`${showFilters ? 'block' : 'hidden'} md:block w-full md:w-72 card-soft h-fit sticky top-24`}>
-          <div className="flex items-center justify-between mb-4 md:hidden">
-            <h2 className="text-xl font-bold">Filters</h2>
-            <button onClick={() => setShowFilters(false)} className="text-gray-600">✕</button>
-          </div>
-
-          {/* Category Filter */}
-          <div className="mb-6">
-            <h3 className="font-semibold mb-3">
-              {language === 'en' ? 'Category' : 'Ubwoko'}
-            </h3>
-            <div className="space-y-2">
-              <button
-                onClick={() => setSearchParams({})}
-                className={`block w-full text-left px-3 py-2 rounded ${
-                  !categoryFilter ? 'bg-primary-100 text-primary-700' : 'hover:bg-gray-100'
-                }`}
-              >
-                {language === 'en' ? 'All Categories' : 'Ubwoko Bwose'}
-              </button>
-              {categories.map((cat) => (
-                <button
-                  key={cat.id}
-                  onClick={() => setSearchParams({ category: cat.id })}
-                  className={`block w-full text-left px-3 py-2 rounded ${
-                    categoryFilter === cat.id ? 'bg-primary-100 text-primary-700' : 'hover:bg-gray-100'
-                  }`}
-                >
-                  {language === 'en' ? cat.name : cat.nameRw}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Price Range */}
-          <div className="mb-6">
-            <h3 className="font-semibold mb-3">
-              {language === 'en' ? 'Price Range' : 'Umubare w\'amafaranga'}
-            </h3>
-            <input
-              type="range"
-              min="0"
-              max="100000"
-              value={priceRange[1]}
-              onChange={(e) => setPriceRange([priceRange[0], parseInt(e.target.value)])}
-              className="w-full"
-            />
-            <div className="flex justify-between text-sm text-gray-600 mt-2">
-              <span>{formatRWF(priceRange[0])}</span>
-              <span>{formatRWF(priceRange[1])}</span>
-            </div>
-          </div>
-
-          {/* Brand Filter */}
-          <div className="mb-6">
-            <h3 className="font-semibold mb-3">
-              {language === 'en' ? 'Brand' : 'Ikirango'}
-            </h3>
-            <select
-              value={selectedBrand}
-              onChange={(e) => setSelectedBrand(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded"
-            >
-              <option value="">{language === 'en' ? 'All Brands' : 'Ikirango Cyose'}</option>
-              {brands.map((brand) => (
-                <option key={brand} value={brand}>{brand}</option>
-              ))}
-            </select>
-          </div>
-
+    <div className="container mx-auto px-4 py-6 md:py-8">
+      
+      {/* === 1. RESPONSIVE HORIZONTAL CATEGORY SCROLL === */}
+      {/* -mx-4 px-4: Allows scroll to touch screen edges on mobile 
+         scrollbar-none: Inline style ensures scrollbar is hidden
+         snap-x: Makes scrolling feel snappy on touch
+      */}
+      <div 
+        className="mb-8 overflow-x-auto pb-2 -mx-4 px-4 md:mx-0 md:px-0 scroll-smooth snap-x snap-mandatory"
+        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+      >
+        <div className="flex gap-2 md:gap-3 min-w-max">
           <button
-            onClick={() => {
-              setPriceRange([0, 100000])
-              setSelectedBrand('')
-              setSearchParams({})
-            }}
-            className="w-full bg-gray-200 hover:bg-gray-300 py-2 rounded transition"
+            onClick={() => handleCategoryClick('all')}
+            className={`snap-center flex items-center gap-2 px-4 py-2 md:px-6 md:py-3 rounded-full border transition-all duration-200 ${
+              selectedCategory === 'all'
+                ? 'bg-slate-900 text-white border-slate-900 shadow-md transform scale-105'
+                : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400 hover:bg-slate-50'
+            }`}
           >
-            {language === 'en' ? 'Clear Filters' : 'Siba Amashyirahamwe'}
+            <span className="font-bold whitespace-nowrap text-sm md:text-base">
+              {language === 'en' ? 'All' : 'Byose'}
+            </span>
           </button>
-        </aside>
-
-        {/* Products Grid */}
-        <div className="flex-1">
-          {/* Search and Filter Toggle */}
-          <div className="flex flex-col sm:flex-row gap-4 mb-6 animate-fade-in-up">
-            <form onSubmit={handleSearch} className="flex-1 flex gap-2">
-              <input
-                type="text"
-                name="search"
-                placeholder={language === 'en' ? 'Search products...' : 'Shakisha ibicuruzwa...'}
-                defaultValue={searchQuery}
-                className="flex-1 px-4 py-2 border border-gray-200 rounded-xl bg-white/80 shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-400"
-              />
-              <button
-                type="submit"
-                className="btn-primary"
-              >
-                {language === 'en' ? 'Search' : 'Shakisha'}
-              </button>
-            </form>
+          
+          {categories.map((cat) => (
             <button
-              onClick={() => setShowFilters(!showFilters)}
-              className="md:hidden bg-white/90 border border-gray-200 hover:border-primary-300 hover:bg-primary-50 text-gray-800 px-4 py-2 rounded-xl shadow-sm transition"
+              key={cat.id}
+              onClick={() => handleCategoryClick(cat.id)}
+              className={`snap-center flex items-center gap-2 px-4 py-2 md:px-6 md:py-3 rounded-full border transition-all duration-200 ${
+                selectedCategory === cat.id
+                  ? 'bg-slate-900 text-white border-slate-900 shadow-md transform scale-105'
+                  : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400 hover:bg-slate-50'
+              }`}
             >
-              {language === 'en' ? 'Filters' : 'Amashyirahamwe'}
+              <span className="text-base md:text-lg">{cat.icon}</span>
+              <span className="font-bold whitespace-nowrap text-sm md:text-base">
+                {language === 'en' ? cat.name : cat.nameRw}
+              </span>
             </button>
-          </div>
-
-          {/* Results Count */}
-          <p className="text-gray-600 mb-6">
-            {language === 'en' 
-              ? `Showing ${filteredProducts.length} product${filteredProducts.length !== 1 ? 's' : ''}`
-              : `Twerekana ibicuruzwa ${filteredProducts.length}`
-            }
-          </p>
-
-          {/* Products Grid */}
-          {filteredProducts.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredProducts.map((product) => (
-                <Link
-                  key={product.id}
-                  to={`/products/${product.slug}`}
-                  onClick={() => trackProductClick(product.id)}
-                  className="card-soft overflow-hidden transition-transform duration-300 hover:-translate-y-2 hover:shadow-glow group"
-                >
-                  <div className="relative aspect-square bg-gradient-to-br from-primary-100 via-sky-100 to-accent-100 overflow-hidden">
-                    {product.image ? (
-                      <img
-                        src={product.image}
-                        alt={product.name}
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                        onError={(e) => {
-                          e.target.style.display = 'none'
-                          e.target.nextSibling.style.display = 'flex'
-                        }}
-                      />
-                    ) : null}
-                    <div className={`absolute inset-0 flex items-center justify-center ${product.image ? 'hidden' : ''}`}>
-                      <div className="absolute inset-0 opacity-40 bg-[radial-gradient(circle_at_top,_#ffffff,_transparent_60%)]" />
-                      <span className="relative text-6xl group-hover:scale-110 transition-transform duration-300">🏊</span>
-                    </div>
-                  </div>
-                  <div className="p-4">
-                    <h3 className="font-semibold text-gray-800 mb-2 line-clamp-2">
-                      {language === 'en' ? product.name : product.nameRw}
-                    </h3>
-                    {product.brand && (
-                      <p className="text-sm text-gray-600 mb-2">{product.brand}</p>
-                    )}
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-2xl font-bold text-primary-600">
-                          {formatRWF(product.price)}
-                        </p>
-                        {product.originalPrice && (
-                          <p className="text-sm text-gray-500 line-through">
-                            {formatRWF(product.originalPrice)}
-                          </p>
-                        )}
-                      </div>
-                      {product.rating && (
-                        <div className="flex items-center">
-                          <span className="text-yellow-400">⭐</span>
-                          <span className="text-sm text-gray-600 ml-1">{product.rating}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-12">
-              <p className="text-gray-600 text-lg">
-                {language === 'en' ? 'No products found' : 'Ntacyo cyabonetse'}
-              </p>
-            </div>
-          )}
+          ))}
         </div>
       </div>
+
+      {/* === 2. TOOLBAR === */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        
+        <div>
+          {urlSearchQuery ? (
+             <h1 className="text-lg md:text-xl font-bold text-slate-900">
+               {language === 'en' ? 'Results for' : 'Ibisubizo'}: <span className="text-sky-600">"{urlSearchQuery}"</span>
+             </h1>
+          ) : (
+             <p className="text-slate-500 font-medium text-sm md:text-base">
+               {language === 'en' ? 'Showing' : 'Ibicuruzwa'} <span className="text-slate-900 font-bold">{filteredProducts.length}</span> {language === 'en' ? 'items' : ''}
+             </p>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2 md:gap-3 overflow-x-auto pb-1 scrollbar-hide">
+          {/* Price Filter */}
+          <div className="relative" ref={filterRef}>
+            <button 
+              onClick={() => setShowPriceFilter(!showPriceFilter)}
+              className={`flex items-center gap-2 px-3 py-2 md:px-4 md:py-2.5 rounded-lg border font-bold text-xs md:text-sm whitespace-nowrap transition-colors ${
+                priceRange[1] < 1000000 
+                  ? 'bg-sky-50 text-sky-700 border-sky-200' 
+                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              <span>💰 {language === 'en' ? 'Price' : 'Igiciro'}</span>
+            </button>
+
+            {showPriceFilter && (
+              <div className="absolute right-0 top-full mt-2 w-72 bg-white rounded-xl shadow-xl border border-slate-100 p-6 z-30 animate-fade-in-up">
+                <div className="flex justify-between items-center mb-4">
+                  <span className="font-bold text-slate-900">{language === 'en' ? 'Max Price' : 'Igiciro Ntarengwa'}</span>
+                  <span className="text-sky-600 font-bold">{formatRWF(priceRange[1])}</span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="200000"
+                  step="1000"
+                  value={priceRange[1]}
+                  onChange={(e) => setPriceRange([0, parseInt(e.target.value)])}
+                  className="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-slate-900"
+                />
+                <button 
+                  onClick={() => setPriceRange([0, 1000000])}
+                  className="w-full mt-4 py-2 text-sm text-slate-400 hover:text-red-500 font-medium"
+                >
+                  {language === 'en' ? 'Reset' : 'Siba'}
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Sort Dropdown */}
+          <div className="relative">
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="appearance-none bg-white pl-3 pr-8 py-2 md:pl-4 md:pr-10 md:py-2.5 rounded-lg border border-slate-200 font-bold text-slate-700 text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 cursor-pointer hover:bg-slate-50"
+            >
+              <option value="newest">{language === 'en' ? 'Sort: Newest' : 'Bishya'}</option>
+              <option value="price-low">{language === 'en' ? 'Price: Low to High' : 'Igiciro: Gito'}</option>
+              <option value="price-high">{language === 'en' ? 'Price: High to Low' : 'Igiciro: Hejuru'}</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* === 3. PRODUCT GRID === */}
+      {filteredProducts.length > 0 ? (
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-6">
+          {filteredProducts.map((product) => (
+            <div key={product.id} className="bg-white rounded-xl md:rounded-2xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-lg transition-all duration-300 group">
+              <div className="relative aspect-[4/5] bg-gray-100 overflow-hidden">
+                <Link to={`/products/${product.slug}`}>
+                  <LazyImage
+                    src={product.image}
+                    alt={product.name}
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                    fallback={<div className="w-full h-full flex items-center justify-center text-2xl md:text-4xl">🏊</div>}
+                  />
+                </Link>
+                
+                {product.originalPrice && (
+                  <div className="absolute top-2 left-2 bg-red-500 text-white text-[10px] md:text-xs font-bold px-1.5 py-0.5 rounded shadow-sm">
+                    SALE
+                  </div>
+                )}
+
+                {/* Mobile Add Button (Always Visible on bottom right of image) */}
+                <button
+                  onClick={(e) => { e.preventDefault(); addItem(product); }}
+                  className="lg:hidden absolute bottom-2 right-2 bg-white/90 text-slate-900 w-8 h-8 rounded-full shadow-md flex items-center justify-center active:scale-95 transition-transform"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>
+                </button>
+
+                {/* Desktop Add Button (Hover) */}
+                <button
+                  onClick={(e) => { e.preventDefault(); addItem(product); }}
+                  className="hidden lg:flex absolute bottom-4 right-4 bg-white text-slate-900 w-10 h-10 rounded-full shadow-xl items-center justify-center translate-y-12 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 hover:bg-sky-500 hover:text-white"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>
+                </button>
+              </div>
+
+              <div className="p-3 md:p-4">
+                <p className="text-[10px] md:text-xs text-slate-500 font-bold mb-1 uppercase tracking-wider line-clamp-1">{product.brand}</p>
+                <Link to={`/products/${product.slug}`}>
+                  <h3 className="font-bold text-slate-900 text-sm md:text-base mb-2 line-clamp-1 hover:text-sky-600 transition-colors">
+                    {language === 'en' ? product.name : product.nameRw}
+                  </h3>
+                </Link>
+                <div className="flex items-center justify-between">
+                  <div className="flex flex-col md:flex-row md:items-center md:gap-2">
+                    <span className="font-black text-sm md:text-lg text-slate-900">{formatRWF(product.price)}</span>
+                    {product.originalPrice && (
+                      <span className="text-[10px] md:text-xs text-slate-400 line-through">{formatRWF(product.originalPrice)}</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="min-h-[40vh] flex flex-col items-center justify-center text-center p-8 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200">
+          <div className="text-4xl md:text-6xl mb-4 opacity-50">🔍</div>
+          <h3 className="text-lg md:text-xl font-bold text-slate-900 mb-2">
+            {language === 'en' ? 'No products found' : 'Nta bicuruzwa byabonetse'}
+          </h3>
+          <button 
+            onClick={() => {
+              setSearchParams({})
+              setSelectedCategory('all')
+              setPriceRange([0, 1000000])
+            }}
+            className="mt-4 bg-slate-900 text-white px-6 py-3 rounded-full font-bold hover:bg-slate-800 transition"
+          >
+            {language === 'en' ? 'Clear Filters' : 'Siba Byose'}
+          </button>
+        </div>
+      )}
     </div>
   )
 }
 
 export default Products
-
-
