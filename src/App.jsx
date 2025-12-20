@@ -6,6 +6,7 @@ import Footer from './components/Footer'
 import WhatsAppButton from './components/WhatsAppButton'
 import useAnalyticsStore from './stores/analyticsStore'
 import useAuthStore from './stores/authStore'
+import useProductStore from './stores/productStore' // 👈 Added this!
 import { getSessionId } from './utils/analytics'
 import ProtectedRoute from './components/ProtectedRoute'
 
@@ -53,7 +54,7 @@ const AnalyticsTracker = () => {
   return null
 }
 
-// === NEW: Wrapper to handle Top Spacing dynamically ===
+// Wrapper to handle Top Spacing dynamically
 const MainLayout = ({ children }) => {
   const location = useLocation()
   const isHome = location.pathname === '/'
@@ -70,13 +71,29 @@ const MainLayout = ({ children }) => {
 
 function App() {
   const startSession = useAnalyticsStore((state) => state.startSession)
-  const initAuth = useAuthStore((state) => state.init)
   const sessionId = getSessionId()
+  
+  // 👇 FIX 1: Add Product Store
+  const fetchProducts = useProductStore((state) => state.fetchProducts)
+
+  // 👇 FIX 2: Use correct name 'initializeAuth' (instead of init/initAuth)
+  const initializeAuth = useAuthStore((state) => state.initializeAuth)
 
   useEffect(() => {
-    initAuth()
+    // Start session tracking
     startSession(sessionId)
-  }, [startSession, initAuth, sessionId])
+
+    // Load products from Firebase
+    fetchProducts()
+
+    // Start listening for Login Status
+    const unsubscribe = initializeAuth()
+    
+    // Cleanup listener when app closes
+    return () => {
+      if (typeof unsubscribe === 'function') unsubscribe()
+    }
+  }, [startSession, sessionId, fetchProducts, initializeAuth])
 
   return (
     <ErrorBoundary>
@@ -85,7 +102,6 @@ function App() {
           <AnalyticsTracker />
           <Header />
           
-          {/* Use the new MainLayout wrapper */}
           <MainLayout>
             <Suspense fallback={<LoadingFallback />}>
               <Routes>

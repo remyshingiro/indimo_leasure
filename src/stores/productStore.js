@@ -1,94 +1,127 @@
 import { create } from 'zustand'
-import { products as defaultProducts } from '../data/products'
+import { db } from '../config/firebase'
+import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc } from 'firebase/firestore'
 
-// Load from localStorage on init
-const loadProducts = () => {
-  try {
-    const stored = localStorage.getItem('adminProducts')
-    if (stored) {
-      const parsed = JSON.parse(stored)
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed
-      }
-    }
-    // Initialize with default products if localStorage is empty
-    localStorage.setItem('adminProducts', JSON.stringify(defaultProducts))
-    return defaultProducts
-  } catch (e) {
-    console.error('Error loading products:', e)
-    return defaultProducts
-  }
-}
-
-// Save to localStorage
-const saveProducts = (products) => {
-  try {
-    localStorage.setItem('adminProducts', JSON.stringify(products))
-  } catch (e) {
-    console.error('Failed to save products:', e)
-  }
-}
+// Import your old mock data so we can upload it once
+import { products as mockProducts } from '../data/products' 
 
 const useProductStore = create((set, get) => ({
-  products: loadProducts(),
-  
-  // Update products (called from admin dashboard)
-  setProducts: (newProducts) => {
-    set({ products: newProducts })
-    saveProducts(newProducts)
+  products: [],
+  isLoading: false,
+  error: null,
+
+  // 1. FETCH PRODUCTS (This is what App.jsx is looking for!)
+  fetchProducts: async () => {
+    set({ isLoading: true });
+    try {
+      const querySnapshot = await getDocs(collection(db, "products"));
+      const productsData = querySnapshot.docs.map(doc => ({
+        id: doc.id, 
+        ...doc.data()
+      }));
+
+      if (productsData.length === 0) {
+        set({ products: [], isLoading: false });
+      } else {
+        set({ products: productsData, isLoading: false });
+      }
+    } catch (error) {
+      console.error("Error fetching products:", error);
+      set({ error: error.message, isLoading: false });
+    }
   },
-  
-  // Add product
-  addProduct: (product) => {
-    const state = get()
-    const newProducts = [...state.products, product]
-    set({ products: newProducts })
-    saveProducts(newProducts)
-  },
-  
-  // Update product
-  updateProduct: (productId, updatedProduct) => {
-    const state = get()
-    const newProducts = state.products.map(p =>
-      p.id === productId ? updatedProduct : p
-    )
-    set({ products: newProducts })
-    saveProducts(newProducts)
-  },
-  
-  // Delete product
-  deleteProduct: (productId) => {
-    const state = get()
-    const newProducts = state.products.filter(p => p.id !== productId)
-    set({ products: newProducts })
-    saveProducts(newProducts)
-  },
-  
-  // Get product by slug
+
+  // 2. HELPER FUNCTIONS (Frontend Search/Filter)
+  // These now run on the 'products' array we fetched from Firebase
   getProductBySlug: (slug) => {
-    const state = get()
-    return state.products.find(p => p.slug === slug)
+    return get().products.find(p => p.slug === slug)
   },
-  
-  // Get products by category
+
   getProductsByCategory: (category) => {
-    const state = get()
-    if (!category) return state.products
-    return state.products.filter(p => p.category === category)
+    const products = get().products
+    if (!category) return products
+    return products.filter(p => p.category === category)
   },
-  
-  // Search products
+
   searchProducts: (query) => {
-    const state = get()
+    const products = get().products
     const lowerQuery = query.toLowerCase()
-    return state.products.filter(p =>
+    return products.filter(p => 
       p.name.toLowerCase().includes(lowerQuery) ||
       (p.nameRw && p.nameRw.toLowerCase().includes(lowerQuery)) ||
-      (p.description && p.description.toLowerCase().includes(lowerQuery)) ||
-      (p.brand && p.brand.toLowerCase().includes(lowerQuery))
+      p.description.toLowerCase().includes(lowerQuery)
     )
+  },
+
+  // 3. ADMIN ACTIONS (Save to Real Cloud)
+  addProduct: async (newProduct) => {
+    set({ isLoading: true });
+    try {
+      const docRef = await addDoc(collection(db, "products"), newProduct);
+      const productWithId = { ...newProduct, id: docRef.id };
+      
+      set(state => ({ 
+        products: [...state.products, productWithId],
+        isLoading: false 
+      }));
+      alert('Product Saved to Cloud!');
+    } catch (error) {
+      console.error("Error adding:", error);
+      alert('Failed to save');
+      set({ isLoading: false });
+    }
+  },
+
+  updateProduct: async (id, updatedData) => {
+    try {
+      const productRef = doc(db, "products", id);
+      await updateDoc(productRef, updatedData);
+      
+      set(state => ({
+        products: state.products.map(p => (p.id === id ? { ...p, ...updatedData } : p))
+      }));
+      alert('Product Updated!');
+    } catch (error) {
+      console.error("Error updating:", error);
+      alert("Failed to update");
+    }
+  },
+
+  deleteProduct: async (productId) => {
+    if (!window.confirm('Are you sure?')) return;
+    try {
+      await deleteDoc(doc(db, "products", productId));
+      set(state => ({
+        products: state.products.filter(p => p.id !== productId)
+      }));
+    } catch (error) {
+      console.error("Error deleting:", error);
+      alert("Failed to delete");
+    }
+  },
+
+  // 4. UPLOAD TOOL (The Button)
+  seedProducts: async () => {
+    const currentProducts = get().products;
+    if (currentProducts.length > 0) return alert("Database already has data!");
+    
+    if(!window.confirm("Upload mock data to Firebase?")) return;
+
+    set({ isLoading: true });
+    try {
+      const uploadPromises = mockProducts.map(product => {
+        const { id, ...productData } = product; 
+        return addDoc(collection(db, "products"), productData);
+      });
+      await Promise.all(uploadPromises);
+      await get().fetchProducts();
+      alert("Success! Mock data uploaded.");
+    } catch (error) {
+      console.error("Seeding error:", error);
+    } finally {
+      set({ isLoading: false });
+    }
   }
 }))
 
 export default useProductStore
-

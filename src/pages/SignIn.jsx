@@ -6,7 +6,6 @@ import useLanguageStore from '../stores/languageStore'
 
 const SignIn = () => {
   const navigate = useNavigate()
-  // 1. Get the signIn function from your store
   const signIn = useAuthStore((state) => state.signIn)
   const language = useLanguageStore((state) => state.language)
   
@@ -20,18 +19,27 @@ const SignIn = () => {
     setAuthError('')
     
     try {
-      // 2. Call the store with exactly what it expects (emailOrPhone, password)
-      const user = await signIn(data.emailOrPhone, data.password)
+      // 1. Log in the user (Admin OR Customer)
+      await signIn(data.emailOrPhone, data.password)
       
-      // 3. Smart Redirect
-      if (user.email === 'admin@kigaliswim.com' || user.role === 'admin') {
+      // 2. Check who they are
+      // We access the store directly to get the freshest user data
+      const currentUser = useAuthStore.getState().user
+
+      // 3. Smart Redirect 🧠
+      if (currentUser?.email === 'admin@kigaliswim.com') {
+        // It's the Boss -> Go to Dashboard
         navigate('/admin')
       } else {
-        navigate('/')
+        // It's a Customer -> Go to their Profile (or Home)
+        navigate('/profile')
       }
+
     } catch (error) {
-      // 4. Handle store errors (like "Invalid credentials")
-      setAuthError(error.message || (language === 'en' ? 'Invalid credentials' : 'Amakuru atariyo'))
+      console.error(error)
+      setAuthError(
+        language === 'en' ? 'Invalid email or password' : 'Imeli cyangwa ijambo ry\'ibanga sibyo'
+      )
     } finally {
       setIsLoading(false)
     }
@@ -50,9 +58,13 @@ const SignIn = () => {
             className="absolute inset-0 w-full h-full object-cover opacity-60"
           />
           <div className="relative z-20 h-full flex flex-col justify-end p-12 text-white">
-            <h2 className="text-4xl font-black mb-4">{language === 'en' ? 'Welcome Back' : 'Murakaza Neza'}</h2>
+            <h2 className="text-4xl font-black mb-4">
+              {language === 'en' ? 'Welcome Back' : 'Murakaza Neza'}
+            </h2>
             <p className="text-lg text-slate-300">
-              {language === 'en' ? 'Ready to dive back in? Access your orders and saved items.' : 'Witeguye kongera koga? Reba ibyo watumije.'}
+              {language === 'en' 
+                ? 'Access your orders and wishlist.' 
+                : 'Reba ibyo watumije n\'ibyo wakunze.'}
             </p>
           </div>
         </div>
@@ -80,13 +92,13 @@ const SignIn = () => {
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             <div>
               <label className="block text-sm font-bold text-slate-700 mb-2">
-                {language === 'en' ? 'Email or Phone' : 'Imeli cyangwa Telefoni'}
+                {language === 'en' ? 'Email Address' : 'Imeli'}
               </label>
               <input
                 {...register('emailOrPhone', { required: true })}
-                type="text"
+                type="email"
                 className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-500 transition-all"
-                placeholder="email@example.com"
+                placeholder="name@example.com"
               />
               {errors.emailOrPhone && <span className="text-xs text-red-500 mt-1">Required</span>}
             </div>
@@ -96,7 +108,9 @@ const SignIn = () => {
                 <label className="block text-sm font-bold text-slate-700">
                   {language === 'en' ? 'Password' : 'Ijambo ry\'ibanga'}
                 </label>
-                <a href="#" className="text-xs text-sky-600 font-bold hover:underline">Forgot?</a>
+                <Link to="/forgot-password" className="text-xs text-sky-600 font-bold hover:underline">
+                  {language === 'en' ? 'Forgot?' : 'Waryibagiwe?'}
+                </Link>
               </div>
               <input
                 {...register('password', { required: true })}
@@ -125,7 +139,7 @@ const SignIn = () => {
   )
 }
 
-// Simple Helper for Image (In case you don't import the component)
+// Simple Helper for Image
 const LazyImage = ({ src, alt, className }) => <img src={src} alt={alt} className={className} />
 
 export default SignIn
