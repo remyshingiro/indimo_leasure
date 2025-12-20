@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import useProductStore from '../../stores/productStore'
 import useCategoryStore from '../../stores/categoryStore'
-import useAnalyticsStore from '../../stores/analyticsStore'
 import { formatRWF } from '../../utils/currency'
 import LazyImage from '../../components/LazyImage'
 import { uploadToCloudinary } from '../../utils/uploadService'
@@ -11,17 +10,26 @@ const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('overview')
   const [showProductModal, setShowProductModal] = useState(false)
   const [showCategoryModal, setShowCategoryModal] = useState(false)
+  
+  // Loading States
   const [isUploading, setIsUploading] = useState(false)
+  const [isSaving, setIsSaving] = useState(false) // New state for saving to Firebase
   
   // Edit States
   const [editingProduct, setEditingProduct] = useState(null)
   const [editingCategory, setEditingCategory] = useState(null)
   
-  // Stores
-  const products = useProductStore((state) => state.products)
-  const setProducts = useProductStore((state) => state.setProducts)
-  const categories = useCategoryStore((state) => state.categories)
-  const setCategories = useCategoryStore((state) => state.setCategories)
+  // === STORE CONNECTIONS (Updated for Firebase) ===
+  const { 
+    products, 
+    fetchProducts, 
+    addProduct, 
+    updateProduct, 
+    deleteProduct, 
+    seedProducts // The magic upload button
+  } = useProductStore()
+
+  const { categories, setCategories } = useCategoryStore()
   
   // Forms
   const [productForm, setProductForm] = useState({
@@ -33,10 +41,15 @@ const AdminDashboard = () => {
   // Previews
   const [imagePreview, setImagePreview] = useState(null)
 
+  // === 1. INITIAL LOAD ===
   useEffect(() => {
+    // Load Products from Cloud
+    fetchProducts();
+
+    // Load Orders (Still Local for now)
     const storedOrders = JSON.parse(localStorage.getItem('orders') || '[]')
     setOrders(storedOrders)
-  }, [])
+  }, [fetchProducts])
 
   // --- ORDER HELPERS ---
   const updateOrderStatus = (orderId, newStatus) => {
@@ -47,7 +60,7 @@ const AdminDashboard = () => {
     localStorage.setItem('orders', JSON.stringify(updatedOrders))
   }
 
-  // --- PRODUCT HELPERS ---
+  // --- PRODUCT HELPERS (FIXED FOR FIREBASE) ---
   const handleAddProduct = () => {
     setEditingProduct(null)
     setProductForm({ name: '', nameRw: '', slug: '', category: 'caps', price: '', originalPrice: '', description: '', descriptionRw: '', brand: '', stock: '', image: '', sizes: [], colors: [] })
@@ -62,33 +75,48 @@ const AdminDashboard = () => {
     setShowProductModal(true)
   }
 
-  const handleDeleteProduct = (productId) => {
-    if (window.confirm('Delete this product?')) {
-      setProducts(products.filter(p => p.id !== productId))
-    }
+  // 🔥 UPDATED: Delete from Firebase
+  const handleDeleteProduct = async (productId) => {
+    await deleteProduct(productId);
   }
 
-  const handleSaveProduct = () => {
+  // 🔥 UPDATED: Save to Firebase
+  const handleSaveProduct = async () => {
     if (!productForm.name || !productForm.price) return alert('Name and Price required')
     
-    const newProd = {
-        ...productForm, 
-        id: editingProduct ? editingProduct.id : Date.now(),
+    setIsSaving(true);
+    try {
+      // Prepare data
+      const productData = {
+        ...productForm,
         price: Number(productForm.price),
         stock: Number(productForm.stock),
+        originalPrice: Number(productForm.originalPrice) || 0,
         inStock: Number(productForm.stock) > 0,
-        slug: productForm.slug || productForm.name.toLowerCase().replace(/\s+/g, '-')
-    }
+        slug: productForm.slug || productForm.name.toLowerCase().replace(/\s+/g, '-'),
+        updatedAt: new Date().toISOString()
+      };
 
-    if (editingProduct) {
-        setProducts(products.map(p => p.id === editingProduct.id ? newProd : p))
-    } else {
-        setProducts([...products, newProd])
+      if (editingProduct) {
+        // UPDATE EXISTING
+        await updateProduct(editingProduct.id, productData);
+      } else {
+        // CREATE NEW
+        await addProduct({
+            ...productData,
+            createdAt: new Date().toISOString()
+        });
+      }
+      
+      setShowProductModal(false);
+    } catch (error) {
+      alert("Error saving product: " + error.message);
+    } finally {
+      setIsSaving(false);
     }
-    setShowProductModal(false)
   }
 
-  // --- CATEGORY HELPERS ---
+  // --- CATEGORY HELPERS (Kept Local for now unless you update categoryStore) ---
   const handleAddCategory = () => {
     setEditingCategory(null)
     setCategoryForm({ name: '', nameRw: '', image: '', icon: '' })
@@ -125,21 +153,6 @@ const AdminDashboard = () => {
     setShowCategoryModal(false)
   }
 
-  // --- UI COMPONENTS ---
-  const StatusBadge = ({ status }) => {
-    const colors = {
-      pending: 'bg-orange-100 text-orange-600',
-      completed: 'bg-green-100 text-green-600',
-      shipped: 'bg-blue-100 text-blue-600',
-      cancelled: 'bg-red-100 text-red-600'
-    }
-    return (
-      <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${colors[status] || 'bg-gray-100 text-gray-600'}`}>
-        {status}
-      </span>
-    )
-  }
-
   return (
     <div className="min-h-screen bg-slate-50 flex">
       
@@ -171,6 +184,17 @@ const AdminDashboard = () => {
               </button>
             ))}
           </nav>
+          
+          {/* 🔥 SEED BUTTON (Only visible on Sidebar) */}
+          <div className="mt-8 px-4">
+            <button 
+                onClick={seedProducts}
+                className="w-full py-3 bg-green-50 text-green-700 font-bold rounded-xl text-sm hover:bg-green-100 border border-green-200 transition"
+            >
+                🚀 Upload Mock Data
+            </button>
+            <p className="text-[10px] text-slate-400 mt-2 text-center">Click once to fill database</p>
+          </div>
         </div>
       </aside>
 
@@ -368,10 +392,10 @@ const AdminDashboard = () => {
                  <button onClick={() => setShowProductModal(false)} className="px-6 py-3 rounded-xl font-bold text-slate-500 hover:bg-slate-100">Cancel</button>
                  <button 
                    onClick={handleSaveProduct} 
-                   disabled={isUploading}
+                   disabled={isUploading || isSaving}
                    className="px-6 py-3 rounded-xl font-bold bg-slate-900 text-white hover:bg-slate-800 shadow-lg disabled:opacity-50"
                  >
-                   {isUploading ? 'Uploading...' : 'Save'}
+                   {isSaving ? 'Saving...' : (isUploading ? 'Uploading...' : 'Save')}
                  </button>
                </div>
             </div>
