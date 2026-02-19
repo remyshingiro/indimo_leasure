@@ -1,29 +1,33 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import useCartStore from '../stores/cartStore'
 import useLanguageStore from '../stores/languageStore'
 import useAuthStore from '../stores/authStore'
+import useOrderStore from '../stores/orderStore'
+import useProductStore from '../stores/productStore' // 👈 Added Product Store
 import { formatRWF, formatRWFSimple } from '../utils/currency'
 import { DELIVERY_ZONES, getDeliveryFee } from '../utils/delivery'
 import LazyImage from '../components/LazyImage'
-// 👇 NEW IMPORTS: Required to save to the real database
-import { saveToDB, getFromDB, isIndexedDBAvailable } from '../utils/db'
 
 const Checkout = () => {
   const navigate = useNavigate()
   const items = useCartStore((state) => state.items)
   const clearCart = useCartStore((state) => state.clearCart)
   const getTotal = useCartStore((state) => state.getTotal)
+  
   const language = useLanguageStore((state) => state.language)
   const user = useAuthStore((state) => state.user)
-  const addOrderToUser = useAuthStore((state) => state.addOrderToUser)
+  
+  const createOrder = useOrderStore((state) => state.createOrder)
+  const updateStock = useProductStore((state) => state.updateStock) // 👈 Added Stock updater
   
   const [selectedZone, setSelectedZone] = useState('gasabo')
   const [paymentMethod, setPaymentMethod] = useState('mtn')
   const [showPaymentInstructions, setShowPaymentInstructions] = useState(false)
   const [transactionId, setTransactionId] = useState('')
   const [orderPlaced, setOrderPlaced] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const { register, handleSubmit, formState: { errors } } = useForm()
 
@@ -31,8 +35,13 @@ const Checkout = () => {
   const deliveryFee = getDeliveryFee(selectedZone)
   const finalTotal = subtotal + deliveryFee
 
-  if (items.length === 0) {
-    navigate('/cart')
+  useEffect(() => {
+    if (items.length === 0 && !orderPlaced) {
+      navigate('/cart')
+    }
+  }, [items.length, orderPlaced, navigate])
+
+  if (items.length === 0 && !orderPlaced) {
     return null
   }
 
@@ -47,51 +56,55 @@ const Checkout = () => {
     }
   }
 
-  // 👇 UPDATED FUNCTION: Now handles Database Saving
   const handleOrderPlacement = async (customerData) => {
-    const order = {
-      id: Date.now(),
-      // Ensure we use the logged-in user's email/phone if available to link the order correctly
+    setIsSubmitting(true)
+    
+    const safeName = customerData?.fullName || user?.name || 'Guest Customer'
+    const safePhone = customerData?.phone || user?.phone || 'No Phone Provided'
+    const safeEmail = customerData?.email || user?.email || 'No Email'
+    const safeAddress = customerData?.address || 'No Address Provided'
+
+    const orderPayload = {
+      userId: user ? (user.uid || user.id || 'guest') : 'guest',
       customer: {
-        ...customerData,
-        email: user ? user.email : customerData.email,
-        phone: user ? user.phone : customerData.phone,
+        fullName: safeName,
+        address: safeAddress,
+        email: safeEmail,
+        phone: safePhone, 
       },
-      items,
-      deliveryZone: selectedZone,
-      paymentMethod,
-      transactionId: paymentMethod !== 'cod' ? transactionId : null,
-      total: finalTotal,
-      status: 'pending',
-      date: new Date().toISOString()
+      items: items.map(item => ({
+        productId: item.id || 'unknown',
+        name: item.name || 'Unknown Product',
+        nameRw: item.nameRw || '',
+        price: Number(item.price) || 0,
+        quantity: Number(item.quantity) || 1,
+        image: item.image || '',
+        selectedSize: item.selectedSize || ''
+      })),
+      deliveryZone: selectedZone || 'gasabo',
+      deliveryFee: Number(deliveryFee) || 0,
+      subtotal: Number(subtotal) || 0,
+      total: Number(finalTotal) || 0,
+      paymentMethod: paymentMethod || 'cod',
+      transactionId: paymentMethod !== 'cod' ? (transactionId || 'none') : 'none',
     }
 
     try {
-      // 1. Save to IndexedDB (The Real Database)
-      if (isIndexedDBAvailable()) {
-        const currentOrders = (await getFromDB('orders')) || []
-        await saveToDB('orders', [...currentOrders, order])
-      }
+      // 1. Save the order to Firebase
+      await createOrder(orderPayload)
 
-      // 2. Save to LocalStorage (Backup)
-      const orders = JSON.parse(localStorage.getItem('orders') || '[]')
-      orders.push(order)
-      localStorage.setItem('orders', JSON.stringify(orders))
+      // 📉 2. Automatically deduct inventory!
+      await updateStock(items)
 
-      // 3. Link to User Profile
-      if (user) {
-        addOrderToUser(order)
-      }
-
-      // 4. Cleanup
+      // 3. Clear the cart & show success
       clearCart()
       setOrderPlaced(true)
       window.scrollTo(0, 0)
-
     } catch (error) {
       console.error("Order Save Error:", error)
-      alert("There was an issue saving your order, but we have received it.")
-      setOrderPlaced(true)
+      alert(language === 'en' ? "Failed to save order. Please try again." : "Habaye ikibazo. Ongera ugerageze.")
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -101,16 +114,14 @@ const Checkout = () => {
       return
     }
     const form = document.getElementById('checkout-form')
-    // Re-construct form data since we are outside the onSubmit context
+    
     if (form) {
-       // Using React Hook Form's getValues would be cleaner, but standard DOM works here too
-       // Since we didn't expose getValues, let's grab values from the DOM inputs
        const inputs = form.elements
        const customerData = {
-          fullName: inputs.fullName.value,
-          phone: inputs.phone.value,
-          email: inputs.email.value,
-          address: inputs.address.value
+         fullName: inputs.fullName?.value || '',
+         phone: inputs.phone?.value || '',
+         email: inputs.email?.value || '',
+         address: inputs.address?.value || ''
        }
        handleOrderPlacement(customerData)
     }
@@ -317,9 +328,13 @@ const Checkout = () => {
               {!showPaymentInstructions && (
                 <button
                   type="submit"
-                  className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-5 rounded-xl text-lg shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-200"
+                  disabled={isSubmitting}
+                  className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-5 rounded-xl text-lg shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {language === 'en' ? 'Continue to Payment' : 'Komeza mu Kwishyura'}
+                  {isSubmitting 
+                    ? (language === 'en' ? 'Processing...' : 'Biri Gukorwa...') 
+                    : (language === 'en' ? 'Continue to Payment' : 'Komeza mu Kwishyura')
+                  }
                 </button>
               )}
             </form>
@@ -380,13 +395,18 @@ const Checkout = () => {
                   <div className="flex gap-4 pt-4">
                     <button
                       onClick={handlePaymentConfirmation}
-                      className="flex-1 bg-sky-500 hover:bg-sky-400 text-white font-bold py-4 rounded-xl shadow-lg transition"
+                      disabled={isSubmitting}
+                      className="flex-1 bg-sky-500 hover:bg-sky-400 text-white font-bold py-4 rounded-xl shadow-lg transition disabled:opacity-50"
                     >
-                      {language === 'en' ? 'I Have Paid' : 'Narishyuze'}
+                      {isSubmitting 
+                        ? (language === 'en' ? 'Processing...' : 'Biri Gukorwa...') 
+                        : (language === 'en' ? 'I Have Paid' : 'Narishyuze')
+                      }
                     </button>
                     <button
                       onClick={() => setShowPaymentInstructions(false)}
-                      className="px-6 py-4 border border-slate-600 text-slate-300 rounded-xl hover:bg-slate-800 transition"
+                      disabled={isSubmitting}
+                      className="px-6 py-4 border border-slate-600 text-slate-300 rounded-xl hover:bg-slate-800 transition disabled:opacity-50"
                     >
                       {language === 'en' ? 'Cancel' : 'Hagarika'}
                     </button>

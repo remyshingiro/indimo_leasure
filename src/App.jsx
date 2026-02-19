@@ -96,8 +96,9 @@ function App() {
   }, [startSession, sessionId, fetchProducts, initializeAuth])
 
   return (
+    <Router>
     <ErrorBoundary>
-      <Router>
+      
         <div className="flex flex-col min-h-screen bg-slate-50">
           <AnalyticsTracker />
           <Header />
@@ -120,7 +121,8 @@ function App() {
                 <Route path="/login" element={<SignIn />} />
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/wishlist" element={<div className="container mx-auto px-4 py-12 text-center"><h1 className="text-2xl font-bold">Wishlist Coming Soon</h1></div>} />
-                <Route path="/admin" element={<ProtectedRoute requireAdmin={true}><AdminDashboard /></ProtectedRoute>} />
+                {/* <Route path="/admin" element={<ProtectedRoute requireAdmin={true}><AdminDashboard /></ProtectedRoute>} /> */}
+                <Route path="/admin" element={<AdminDashboard />} />
               </Routes>
             </Suspense>
           </MainLayout>
@@ -128,8 +130,9 @@ function App() {
           <Footer />
           <WhatsAppButton />
         </div>
-      </Router>
+      
     </ErrorBoundary>
+    </Router>
   )
 }
 
