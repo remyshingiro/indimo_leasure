@@ -67,7 +67,7 @@ const Products = () => {
   }
 
   return (
-    <div className="container mx-auto px-4 py-6 md:py-8">
+    <div className="container mx-auto px-1 py-6 md:py-8">
       
       {/* === 1. RESPONSIVE HORIZONTAL CATEGORY SCROLL === */}
       {/* -mx-4 px-4: Allows scroll to touch screen edges on mobile 

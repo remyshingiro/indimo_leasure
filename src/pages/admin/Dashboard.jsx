@@ -139,10 +139,13 @@ const AdminDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
+    // 🛠️ FIX 1: Removed 'flex' here to stop the horizontal overflow
+    <div className="min-h-screen bg-slate-50">
+      
       {isMobileMenuOpen && <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setIsMobileMenuOpen(false)} />}
 
-      <aside className={`fixed top-0 left-0 h-full w-64 bg-white border-r border-slate-200 z-50 pt-24 transition-transform duration-300 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 lg:block`}>
+      {/* 🛠️ FIX 2: Added pt-20 to clear the global navbar properly */}
+      <aside className={`fixed top-0 left-0 h-full w-64 bg-white border-r border-slate-200 z-[40] pt-20 transition-transform duration-300 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 lg:block`}>
         <div className="p-6 h-full overflow-y-auto">
           <div className="flex items-center justify-between mb-8 px-4">
             <div className="flex items-center gap-2"><span className="text-2xl">⚡</span><span className="font-black text-xl text-slate-900">Admin</span></div>
@@ -161,7 +164,8 @@ const AdminDashboard = () => {
         </div>
       </aside>
 
-      <main className="flex-1 ml-0 lg:ml-64 p-4 lg:p-8 pt-24 lg:pt-28 w-full">
+      {/* 🛠️ FIX 3: Changed to a standard div, removed w-full, flex-1, and the double top-padding */}
+      <div className="ml-0 lg:ml-64 p-4 lg:p-8">
         <div className="lg:hidden flex items-center gap-4 mb-6">
             <button onClick={() => setIsMobileMenuOpen(true)} className="p-2 bg-white rounded-lg border border-slate-200 text-2xl shadow-sm">☰</button>
             <h1 className="text-xl font-black text-slate-900 capitalize">{activeTab}</h1>
@@ -262,7 +266,7 @@ const AdminDashboard = () => {
             ))}
           </div>
         )}
-      </main>
+      </div>
 
       {/* === PRODUCT MODAL === */}
       {showProductModal && (
@@ -309,7 +313,26 @@ const AdminDashboard = () => {
                  <div className="space-y-3">
                     <div className={`border-2 border-dashed rounded-xl p-6 text-center transition-colors ${isUploading ? 'bg-slate-50 border-slate-300' : 'border-slate-300 hover:border-slate-900 hover:bg-slate-50'}`}>
                       <div className="relative">
-                        <input type="file" accept="image/*" disabled={isUploading} onChange={async (e) => { const file = e.target.files[0]; if (!file) return; setIsUploading(true); try { const url = await uploadToCloudinary(file); setProductForm(prev => ({ ...prev, image: url })); setImagePreview(url); } catch (error) { alert('Upload failed.'); } finally { setIsUploading(false); } }} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                        <input 
+                          type="file" 
+                          accept="image/*" 
+                          disabled={isUploading} 
+                          onChange={async (e) => { 
+                            const file = e.target.files[0]; 
+                            if (!file) return; 
+                            setIsUploading(true); 
+                            try { 
+                              const url = await uploadToCloudinary(file); 
+                              setProductForm(prev => ({ ...prev, image: url })); 
+                              setImagePreview(url); 
+                            } catch (error) { 
+                              alert('Upload failed.'); 
+                            } finally { 
+                              setIsUploading(false); 
+                            } 
+                          }} 
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" 
+                        />
                         <div className="flex flex-col items-center justify-center pointer-events-none">
                           {isUploading ? <span className="text-sm font-bold text-slate-500">Uploading...</span> : <><span className="text-2xl mb-1">☁️</span><span className="text-sm font-bold text-slate-700">Tap to Upload</span></>}
                         </div>
@@ -340,7 +363,24 @@ const AdminDashboard = () => {
                  <label className="text-xs font-bold text-slate-500 uppercase">Category Image</label>
                  <div className="flex gap-2 mt-2">
                    <div className="relative flex-1">
-                      <input type="file" accept="image/*" disabled={isUploading} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onChange={async (e) => { const file = e.target.files[0]; if(!file) return; setIsUploading(true); try { const url = await uploadToCloudinary(file); setCategoryForm(prev => ({ ...prev, image: url, icon: '' })); setImagePreview(url); } finally { setIsUploading(false); } }} />
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        disabled={isUploading} 
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" 
+                        onChange={async (e) => { 
+                          const file = e.target.files[0]; 
+                          if(!file) return; 
+                          setIsUploading(true); 
+                          try { 
+                            const url = await uploadToCloudinary(file); 
+                            setCategoryForm(prev => ({ ...prev, image: url, icon: '' })); 
+                            setImagePreview(url); 
+                          } finally { 
+                            setIsUploading(false); 
+                          } 
+                        }} 
+                      />
                       <div className="w-full p-3 bg-slate-100 rounded-xl text-center text-xs font-bold text-slate-600 border border-slate-200 hover:bg-slate-200 transition">{isUploading ? 'Uploading...' : 'Upload Image'}</div>
                    </div>
                    <input value={categoryForm.icon} onChange={e => setCategoryForm({...categoryForm, icon: e.target.value, image: ''})} className="w-20 p-3 bg-slate-50 rounded-xl border border-slate-200 text-center" placeholder="Emoji" />

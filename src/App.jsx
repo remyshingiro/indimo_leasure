@@ -6,9 +6,9 @@ import Footer from './components/Footer'
 import WhatsAppButton from './components/WhatsAppButton'
 import useAnalyticsStore from './stores/analyticsStore'
 import useAuthStore from './stores/authStore'
-import useProductStore from './stores/productStore' // 👈 Added this!
+import useProductStore from './stores/productStore' 
 import { getSessionId } from './utils/analytics'
-import ProtectedRoute from './components/ProtectedRoute'
+import ProtectedRoute from './components/ProtectedRoute' // 👈 Brought this back into action!
 
 // Lazy load pages
 const Home = lazy(() => import('./pages/Home'))
@@ -31,8 +31,8 @@ const AdminDashboard = lazy(() => import('./pages/admin/Dashboard'))
 const LoadingFallback = () => (
   <div className="min-h-screen flex items-center justify-center">
     <div className="text-center">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
-      <p className="text-gray-600">Loading...</p>
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-sky-600 mx-auto mb-4"></div>
+      <p className="text-slate-600 font-bold">Loading...</p>
     </div>
   </div>
 )
@@ -54,14 +54,16 @@ const AnalyticsTracker = () => {
   return null
 }
 
-// Wrapper to handle Top Spacing dynamically
+// 🛠️ FIX: Reduced Top Spacing
 const MainLayout = ({ children }) => {
   const location = useLocation()
+  // If we are on the home page, no top padding (so the hero image can touch the top)
+  // If we are on any other page, use a smaller padding just to clear the navbar height
   const isHome = location.pathname === '/'
 
   return (
     <main 
-      className={`flex-grow ${isHome ? '' : 'pt-28 lg:pt-32'}`} 
+      className={`flex-grow ${isHome ? '' : 'pt-16 lg:pt-20'}`} 
       role="main"
     >
       {children}
@@ -73,10 +75,7 @@ function App() {
   const startSession = useAnalyticsStore((state) => state.startSession)
   const sessionId = getSessionId()
   
-  // 👇 FIX 1: Add Product Store
   const fetchProducts = useProductStore((state) => state.fetchProducts)
-
-  // 👇 FIX 2: Use correct name 'initializeAuth' (instead of init/initAuth)
   const initializeAuth = useAuthStore((state) => state.initializeAuth)
 
   useEffect(() => {
@@ -121,8 +120,14 @@ function App() {
                 <Route path="/login" element={<SignIn />} />
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/wishlist" element={<div className="container mx-auto px-4 py-12 text-center"><h1 className="text-2xl font-bold">Wishlist Coming Soon</h1></div>} />
-                {/* <Route path="/admin" element={<ProtectedRoute requireAdmin={true}><AdminDashboard /></ProtectedRoute>} /> */}
-                <Route path="/admin" element={<AdminDashboard />} />
+                
+                {/* 🔒 FIX: Admin Door is now Locked! */}
+                <Route path="/admin" element={
+                  <ProtectedRoute requireAdmin={true}>
+                    <AdminDashboard />
+                  </ProtectedRoute>
+                } />
+                
               </Routes>
             </Suspense>
           </MainLayout>

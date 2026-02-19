@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { auth, db } from '../config/firebase' // Import the Firebase tools we setup
+import { auth, db } from '../config/firebase' 
 import { 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
@@ -11,40 +11,68 @@ import { doc, setDoc, getDoc } from 'firebase/firestore'
 const useAuthStore = create((set) => ({
   user: null,
   isAdmin: false,
-  isLoading: true, // Start true to check login status on load
+  isLoading: true, 
   error: null,
 
   // 1. AUTO-LOGIN LISTENER (Runs when app starts)
   initializeAuth: () => {
-    // Firebase automatically checks if the user has a valid token in the browser
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       set({ isLoading: true });
       
       if (currentUser) {
-        // User is logged in! Check if they are the Admin
-        // (You can also fetch extra profile data from Firestore here if needed)
-        const isAdmin = currentUser.email === 'admin@kigaliswim.com';
+        // Fetch the user's extra profile data (name, phone, role) from Firestore
+        const userDocRef = doc(db, 'users', currentUser.uid);
+        const userDocSnap = await getDoc(userDocRef);
         
-        set({ user: currentUser, isAdmin, isLoading: false });
+        let profileData = {};
+        if (userDocSnap.exists()) {
+          profileData = userDocSnap.data();
+        }
+
+        // Merge Auth data with Firestore Database data
+        const mergedUser = {
+          uid: currentUser.uid,
+          email: currentUser.email,
+          ...profileData
+        };
+        
+        // 🔓 Check the role from the database! (Or fallback to the hardcoded email just in case)
+        const isAdmin = mergedUser.role === 'admin' || currentUser.email === 'admin@kigaliswim.com';
+        
+        set({ user: mergedUser, isAdmin, isLoading: false });
       } else {
-        // User is logged out
         set({ user: null, isAdmin: false, isLoading: false });
       }
     });
-    return unsubscribe; // Return cleanup function
+    return unsubscribe; 
   },
 
   // 2. LOGIN FUNCTION
   signIn: async (email, password) => {
     set({ isLoading: true, error: null });
     try {
-      // Ask Firebase to log in
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-      const isAdmin = user.email === 'admin@kigaliswim.com';
+      const currentUser = userCredential.user;
 
-      set({ user, isAdmin, isLoading: false });
-      return true; // Success!
+      // Fetch the role and details from Firestore upon explicit login
+      const userDocRef = doc(db, 'users', currentUser.uid);
+      const userDocSnap = await getDoc(userDocRef);
+      
+      let profileData = {};
+      if (userDocSnap.exists()) {
+        profileData = userDocSnap.data();
+      }
+
+      const mergedUser = {
+        uid: currentUser.uid,
+        email: currentUser.email,
+        ...profileData
+      };
+
+      const isAdmin = mergedUser.role === 'admin' || currentUser.email === 'admin@kigaliswim.com';
+
+      set({ user: mergedUser, isAdmin, isLoading: false });
+      return true; 
     } catch (err) {
       console.error(err);
       let errorMessage = "Failed to login.";
@@ -52,7 +80,7 @@ const useAuthStore = create((set) => ({
       if (err.code === 'auth/too-many-requests') errorMessage = "Too many failed attempts. Try later.";
       
       set({ error: errorMessage, isLoading: false });
-      throw new Error(errorMessage); // Throw so the UI knows it failed
+      throw new Error(errorMessage); 
     }
   },
 
@@ -60,23 +88,26 @@ const useAuthStore = create((set) => ({
   signUp: async (userData) => {
     set({ isLoading: true, error: null });
     try {
-      // 1. Create the Account in Firebase Auth
       const userCredential = await createUserWithEmailAndPassword(auth, userData.email, userData.password);
-      const user = userCredential.user;
+      const currentUser = userCredential.user;
 
-      // 2. Save their extra details (Name, Phone) to Firestore Database
-      // We create a document in the 'users' collection with their unique User ID (uid)
-      await setDoc(doc(db, "users", user.uid), {
+      const newUserProfile = {
         name: userData.name,
         email: userData.email,
         phone: userData.phone,
         createdAt: new Date().toISOString(),
-        role: 'customer'
-      });
+        role: 'customer' // Defaults to customer
+      };
 
-      // 3. Update Store
-      set({ user, isAdmin: false, isLoading: false });
-      return user;
+      await setDoc(doc(db, "users", currentUser.uid), newUserProfile);
+
+      const mergedUser = {
+        uid: currentUser.uid,
+        ...newUserProfile
+      };
+
+      set({ user: mergedUser, isAdmin: false, isLoading: false });
+      return mergedUser;
     } catch (err) {
       console.error(err);
       let errorMessage = "Failed to register.";

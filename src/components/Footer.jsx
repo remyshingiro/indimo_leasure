@@ -1,8 +1,14 @@
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom' // 👈 Added useLocation
 import useLanguageStore from '../stores/languageStore'
 
 const Footer = () => {
   const language = useLanguageStore((state) => state.language)
+  const location = useLocation() // 👈 Get the current page URL
+
+  // 🛑 FIX: If we are on the admin page, do not render the footer at all!
+  if (location.pathname.startsWith('/admin')) {
+    return null
+  }
 
   const handleLinkClick = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -20,8 +26,8 @@ const Footer = () => {
       followUs: 'Follow Us',
       rights: 'All rights reserved',
       address: 'Kigali, Rwanda',
-      phone: '+250 XXX XXX XXX',
-      email: 'info@kigaliswimshop.com'
+      phone: '+250 784 154 697',
+      email: 'kigaliswimshop@gmail.com'
     },
     rw: {
       cta: "Witeguye Koga?",
@@ -34,15 +40,15 @@ const Footer = () => {
       followUs: 'Dukurikire',
       rights: 'Uburenganzira bwose burabagirwa',
       address: 'Kigali, u Rwanda',
-      phone: '+250 XXX XXX XXX',
-      email: 'info@kigaliswimshop.com'
+      phone: '+250 784 154 697',
+      email: 'kigaliswimshop@gmail.com'
     }
   }
 
   const t = translations[language]
 
   return (
-    // FIX ADDED HERE: mt-24 lg:mt-32 pushes the footer down to create space for the wave
+    // mt-24 lg:mt-32 pushes the footer down to create space for the wave
     <footer className="relative bg-slate-900 text-white mt-auto mt-24 lg:mt-32">
       
       {/* === 1. TOP WAVE TRANSITION === */}
