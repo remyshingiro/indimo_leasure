@@ -1,11 +1,18 @@
-import { Link, useLocation } from 'react-router-dom' // 👈 Added useLocation
+import { useState } from 'react'
+import { Link, useLocation } from 'react-router-dom' 
 import useLanguageStore from '../stores/languageStore'
+import { collection, addDoc } from 'firebase/firestore'
+import { db } from '../config/firebase'
 
 const Footer = () => {
   const language = useLanguageStore((state) => state.language)
-  const location = useLocation() // 👈 Get the current page URL
+  const location = useLocation() 
+  
+  // Newsletter State
+  const [email, setEmail] = useState('')
+  const [subscribeStatus, setSubscribeStatus] = useState('idle') // idle, loading, success, error
 
-  // 🛑 FIX: If we are on the admin page, do not render the footer at all!
+  // 🛑 FIX: Hide the footer on admin dashboard
   if (location.pathname.startsWith('/admin')) {
     return null
   }
@@ -14,12 +21,48 @@ const Footer = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
+  // 📧 Handle Newsletter Subscription
+  const handleSubscribe = async (e) => {
+    e.preventDefault()
+    if (!email.trim()) return
+
+    setSubscribeStatus('loading')
+    try {
+      // Save the email to a new 'subscribers' collection in Firebase
+      await addDoc(collection(db, 'subscribers'), {
+        email: email,
+        subscribedAt: new Date().toISOString(),
+        status: 'active'
+      })
+      
+      setSubscribeStatus('success')
+      setEmail('') // Clear the input
+      
+      // Reset the button after 3 seconds
+      setTimeout(() => setSubscribeStatus('idle'), 3000)
+    } catch (error) {
+      console.error("Error subscribing:", error)
+      setSubscribeStatus('error')
+      setTimeout(() => setSubscribeStatus('idle'), 3000)
+    }
+  }
+
+  // 🔗 Social Media Links (Update these URLs to your actual pages when you have them!)
+  const socialLinks = [
+    { name: 'Instagram', url: 'https://instagram.com/kigaliswimshop', icon: '📸' },
+    { name: 'Facebook', url: 'https://facebook.com/kigaliswimshop', icon: '📘' },
+    { name: 'Twitter', url: 'https://twitter.com/kigaliswimshop', icon: '🐦' }
+  ]
+
   const translations = {
     en: {
       cta: "Ready to dive in?",
       subCta: "Join our community for swimming tips and exclusive offers.",
       placeholder: "Enter your email",
       subscribe: "Subscribe",
+      subscribing: "Saving...",
+      success: "Thank You! 🎉",
+      error: "Try Again",
       quickLinks: 'Quick Links',
       customerService: 'Customer Service',
       paymentMethods: 'Payment Methods',
@@ -34,6 +77,9 @@ const Footer = () => {
       subCta: "Injira mu muryango wacu kugirango ubone inama n'ibiciro byiza.",
       placeholder: "Andika imeri yawe",
       subscribe: "Iyandikishe",
+      subscribing: "Biri gukorwa...",
+      success: "Murakoze! 🎉",
+      error: "Ongera ugerageze",
       quickLinks: 'Amahuza',
       customerService: 'Serivisi z\'abakiriya',
       paymentMethods: 'Uburyo bwo kwishura',
@@ -76,16 +122,33 @@ const Footer = () => {
           <div className="w-full max-w-md">
             <div className="relative group">
               <div className="absolute -inset-0.5 bg-gradient-to-r from-sky-400 to-primary-600 rounded-full blur opacity-20 group-hover:opacity-60 transition duration-1000"></div>
-              <form className="relative flex items-center bg-slate-800/80 backdrop-blur-sm rounded-full p-2 border border-slate-700 focus-within:border-sky-500 transition-colors">
+              
+              {/* 🛑 FIX: Connected the form to our handleSubscribe function */}
+              <form onSubmit={handleSubscribe} className="relative flex items-center bg-slate-800/80 backdrop-blur-sm rounded-full p-2 border border-slate-700 focus-within:border-sky-500 transition-colors">
                 <input 
                   type="email" 
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
                   placeholder={t.placeholder}
                   className="flex-1 bg-transparent px-6 py-3 text-white placeholder-slate-500 focus:outline-none w-full"
                 />
-                <button className="bg-primary-600 hover:bg-primary-500 text-white font-bold px-6 py-3 rounded-full transition-colors shadow-lg">
-                  {t.subscribe}
+                <button 
+                  type="submit"
+                  disabled={subscribeStatus === 'loading' || subscribeStatus === 'success'}
+                  className={`font-bold px-6 py-3 rounded-full transition-all shadow-lg ${
+                    subscribeStatus === 'success' ? 'bg-green-500 text-white' :
+                    subscribeStatus === 'error' ? 'bg-red-500 text-white' :
+                    'bg-primary-600 hover:bg-primary-500 text-white'
+                  }`}
+                >
+                  {subscribeStatus === 'loading' ? t.subscribing : 
+                   subscribeStatus === 'success' ? t.success : 
+                   subscribeStatus === 'error' ? t.error : 
+                   t.subscribe}
                 </button>
               </form>
+
             </div>
           </div>
         </div>
@@ -190,13 +253,19 @@ const Footer = () => {
               </div>
             </div>
             
-            {/* Socials */}
+            {/* 🛑 FIX: Real Social Media Links */}
             <h4 className="font-bold text-lg mt-8 mb-4 text-white">{t.followUs}</h4>
             <div className="flex gap-4">
-               {['instagram', 'twitter', 'facebook'].map(social => (
-                 <a key={social} href="#" className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 hover:bg-sky-500 hover:text-white transition-all transform hover:-translate-y-1">
-                    {/* Simple generic social icon */}
-                    <span className="capitalize">{social[0]}</span>
+               {socialLinks.map((social) => (
+                 <a 
+                   key={social.name} 
+                   href={social.url} 
+                   target="_blank" 
+                   rel="noopener noreferrer" 
+                   title={social.name}
+                   className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-xl hover:bg-sky-500 hover:text-white transition-all transform hover:-translate-y-1 shadow-lg border border-slate-700 hover:border-sky-400"
+                 >
+                    {social.icon}
                  </a>
                ))}
             </div>

@@ -15,7 +15,6 @@ const Header = () => {
   // === STORES (Optimized Selectors) ===
   const cartItems = useCartStore((state) => state.items)
   const { language, setLanguage } = useLanguageStore()
-  // FIX: Using specific selectors and 'signOut' to match your store
   const user = useAuthStore((state) => state.user)
   const signOut = useAuthStore((state) => state.signOut)
   const categories = useCategoryStore((state) => state.categories)
@@ -88,7 +87,12 @@ const Header = () => {
             
             {/* === LOGO === */}
             <Link to="/" className="flex items-center gap-2 group">
-              <span className="text-3xl filter drop-shadow-lg group-hover:scale-110 transition-transform duration-300">🏊</span>
+              {/* 🛑 FIX: Swapped emoji for real logo image */}
+              <img 
+                src="/logo.png" 
+                alt="Kigali Swim Shop Logo" 
+                className="w-10 h-10 md:w-12 md:h-12 object-contain filter drop-shadow-lg group-hover:scale-110 transition-transform duration-300" 
+              />
               <div className={`font-black text-xl tracking-tighter leading-none ${isScrolled || !isHome ? 'text-slate-900' : 'text-white'}`}>
                 KIGALI<br />
                 <span className={isScrolled || !isHome ? 'text-sky-600' : 'text-sky-300'}>SWIM</span>
@@ -187,7 +191,6 @@ const Header = () => {
                   }`}
                 >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
-                  {/* <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span> */}
                 </button>
 
                 {showNotifications && (
@@ -227,7 +230,6 @@ const Header = () => {
                     className="w-9 h-9 rounded-full bg-gradient-to-tr from-sky-400 to-slate-900 p-0.5 shadow-md hover:scale-105 transition-transform"
                   >
                     <div className="w-full h-full rounded-full bg-white flex items-center justify-center overflow-hidden">
-                       {/* Safe check for user.name */}
                        <span className="text-sm font-bold text-slate-900">
                           {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
                        </span>
