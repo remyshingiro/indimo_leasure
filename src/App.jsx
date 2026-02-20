@@ -7,8 +7,10 @@ import WhatsAppButton from './components/WhatsAppButton'
 import useAnalyticsStore from './stores/analyticsStore'
 import useAuthStore from './stores/authStore'
 import useProductStore from './stores/productStore' 
+// 🚀 ADDED: We need the category store to fetch categories globally!
+import useCategoryStore from './stores/categoryStore' 
 import { getSessionId } from './utils/analytics'
-import ProtectedRoute from './components/ProtectedRoute' // 👈 Brought this back into action!
+import ProtectedRoute from './components/ProtectedRoute'
 
 // Lazy load pages
 const Home = lazy(() => import('./pages/Home'))
@@ -26,6 +28,18 @@ const SignUp = lazy(() => import('./pages/SignUp'))
 const SignIn = lazy(() => import('./pages/SignIn'))
 const Profile = lazy(() => import('./pages/Profile'))
 const AdminDashboard = lazy(() => import('./pages/admin/Dashboard'))
+
+// 🚀 ADDED: ScrollToTop Component
+// This forces the window to snap to the top every time the route changes
+const ScrollToTop = () => {
+  const { pathname } = useLocation()
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+  }, [pathname])
+
+  return null
+}
 
 // Loading component
 const LoadingFallback = () => (
@@ -54,7 +68,7 @@ const AnalyticsTracker = () => {
   return null
 }
 
-// 🛠️ FIX: Reduced Top Spacing
+// Reduced Top Spacing
 const MainLayout = ({ children }) => {
   const location = useLocation()
   // If we are on the home page, no top padding (so the hero image can touch the top)
@@ -76,14 +90,17 @@ function App() {
   const sessionId = getSessionId()
   
   const fetchProducts = useProductStore((state) => state.fetchProducts)
+  // 🚀 ADDED: Bring in the fetchCategories function
+  const fetchCategories = useCategoryStore((state) => state.fetchCategories)
   const initializeAuth = useAuthStore((state) => state.initializeAuth)
 
   useEffect(() => {
     // Start session tracking
     startSession(sessionId)
 
-    // Load products from Firebase
+    // 🚀 ADDED: Load BOTH products and categories from Firebase instantly
     fetchProducts()
+    fetchCategories() 
 
     // Start listening for Login Status
     const unsubscribe = initializeAuth()
@@ -92,12 +109,14 @@ function App() {
     return () => {
       if (typeof unsubscribe === 'function') unsubscribe()
     }
-  }, [startSession, sessionId, fetchProducts, initializeAuth])
+  }, [startSession, sessionId, fetchProducts, fetchCategories, initializeAuth])
 
   return (
     <Router>
-    <ErrorBoundary>
+      {/* The ScrollToTop component sits right inside the Router! */}
+      <ScrollToTop />
       
+      <ErrorBoundary>
         <div className="flex flex-col min-h-screen bg-slate-50">
           <AnalyticsTracker />
           <Header />
@@ -121,7 +140,7 @@ function App() {
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/wishlist" element={<div className="container mx-auto px-4 py-12 text-center"><h1 className="text-2xl font-bold">Wishlist Coming Soon</h1></div>} />
                 
-                {/* 🔒 FIX: Admin Door is now Locked! */}
+                {/* 🔒 Admin Door is Locked! */}
                 <Route path="/admin" element={
                   <ProtectedRoute requireAdmin={true}>
                     <AdminDashboard />
@@ -135,10 +154,9 @@ function App() {
           <Footer />
           <WhatsAppButton />
         </div>
-      
-    </ErrorBoundary>
+      </ErrorBoundary>
     </Router>
   )
 }
 
-export default App
+export default App 

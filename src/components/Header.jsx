@@ -12,7 +12,7 @@ const Header = () => {
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   
-  // === STORES (Optimized Selectors) ===
+  // === STORES ===
   const cartItems = useCartStore((state) => state.items)
   const { language, setLanguage } = useLanguageStore()
   const user = useAuthStore((state) => state.user)
@@ -22,7 +22,6 @@ const Header = () => {
   const navigate = useNavigate()
   const location = useLocation()
   
-  // Refs for click-outside detection
   const notifRef = useRef(null)
   const userRef = useRef(null)
 
@@ -49,7 +48,6 @@ const Header = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  // Close mobile menu on route change
   useEffect(() => {
     setIsMobileMenuOpen(false)
     setShowUserMenu(false)
@@ -70,7 +68,6 @@ const Header = () => {
     navigate('/')
   }
 
-  // Determine if transparent background should be used
   const isHome = location.pathname === '/'
 
   return (
@@ -78,22 +75,21 @@ const Header = () => {
       <header 
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
           isScrolled || !isHome 
-            ? 'bg-white/90 backdrop-blur-md shadow-sm py-3' 
-            : 'bg-transparent py-5'
+            ? 'bg-white/90 backdrop-blur-md shadow-sm py-2 sm:py-3' 
+            : 'bg-transparent py-3 sm:py-5'
         }`}
       >
-        <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between gap-4">
+        <div className="container mx-auto px-2 sm:px-4">
+          <div className="flex items-center justify-between gap-1 sm:gap-4">
             
-            {/* === LOGO === */}
-            <Link to="/" className="flex items-center gap-2 group">
-              {/* 🛑 FIX: Swapped emoji for real logo image */}
+            {/* === LOGO (Scaled for mobile) === */}
+            <Link to="/" className="flex items-center gap-1.5 sm:gap-2 group shrink-0">
               <img 
                 src="/logo.png" 
                 alt="Kigali Swim Shop Logo" 
-                className="w-10 h-10 md:w-12 md:h-12 object-contain filter drop-shadow-lg group-hover:scale-110 transition-transform duration-300" 
+                className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 object-contain filter drop-shadow-lg group-hover:scale-110 transition-transform duration-300" 
               />
-              <div className={`font-black text-xl tracking-tighter leading-none ${isScrolled || !isHome ? 'text-slate-900' : 'text-white'}`}>
+              <div className={`font-black text-sm sm:text-xl tracking-tighter leading-none ${isScrolled || !isHome ? 'text-slate-900' : 'text-white'}`}>
                 KIGALI<br />
                 <span className={isScrolled || !isHome ? 'text-sky-600' : 'text-sky-300'}>SWIM</span>
               </div>
@@ -101,8 +97,7 @@ const Header = () => {
 
             {/* === DESKTOP NAVIGATION === */}
             <div className="hidden lg:flex items-center gap-8">
-              
-              {/* Categories Dropdown */}
+              {/* Categories Dropdown (Intact & Working!) */}
               <div className="relative group">
                 <button className={`font-bold text-sm uppercase tracking-wide py-2 flex items-center gap-1 ${
                   isScrolled || !isHome ? 'text-slate-600 hover:text-sky-600' : 'text-white/90 hover:text-white'
@@ -165,13 +160,13 @@ const Header = () => {
               </form>
             </div>
 
-            {/* === ICONS AREA === */}
-            <div className="flex items-center gap-2 sm:gap-4">
+            {/* === ICONS AREA (Scaled for Mobile to prevent overlap) === */}
+            <div className="flex items-center justify-end gap-1 sm:gap-4 shrink-0">
               
               {/* Language Switcher */}
               <button 
                 onClick={() => setLanguage(language === 'en' ? 'rw' : 'en')}
-                className={`w-8 h-8 flex items-center justify-center rounded-full font-bold text-xs transition-colors ${
+                className={`w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-full font-bold text-[10px] sm:text-xs transition-colors ${
                   isScrolled || !isHome 
                     ? 'bg-slate-100 text-slate-700 hover:bg-slate-200' 
                     : 'bg-white/20 text-white hover:bg-white/30'
@@ -180,21 +175,21 @@ const Header = () => {
                 {language === 'en' ? 'RW' : 'EN'}
               </button>
 
-              {/* Notification Icon (Demo) */}
+              {/* Notification Icon */}
               <div className="relative" ref={notifRef}>
                 <button 
                   onClick={() => setShowNotifications(!showNotifications)}
-                  className={`p-2 rounded-full transition-colors relative ${
+                  className={`p-1.5 sm:p-2 rounded-full transition-colors relative ${
                     isScrolled || !isHome 
                       ? 'text-slate-600 hover:bg-slate-100' 
                       : 'text-white hover:bg-white/20'
                   }`}
                 >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
+                  <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
                 </button>
 
                 {showNotifications && (
-                  <div className="absolute top-full right-0 mt-2 w-72 bg-white rounded-xl shadow-2xl border border-slate-100 overflow-hidden z-50 animate-fade-in-up">
+                  <div className="absolute top-full right-0 mt-2 w-64 sm:w-72 bg-white rounded-xl shadow-2xl border border-slate-100 overflow-hidden z-50 animate-fade-in-up">
                     <div className="p-3 border-b border-slate-50 bg-slate-50/50">
                       <span className="font-bold text-slate-800 text-sm">Notifications</span>
                     </div>
@@ -208,15 +203,15 @@ const Header = () => {
               {/* Cart Icon */}
               <Link 
                 to="/cart" 
-                className={`p-2 rounded-full transition-colors relative ${
+                className={`p-1.5 sm:p-2 rounded-full transition-colors relative ${
                   isScrolled || !isHome 
                     ? 'text-slate-600 hover:bg-slate-100' 
                     : 'text-white hover:bg-white/20'
                 }`}
               >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>
+                <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>
                 {cartItems.length > 0 && (
-                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-sky-500 text-white text-xs font-bold flex items-center justify-center rounded-full border-2 border-white">
+                  <span className="absolute -top-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 bg-sky-500 text-white text-[10px] sm:text-xs font-bold flex items-center justify-center rounded-full border-2 border-white">
                     {cartItems.length}
                   </span>
                 )}
@@ -227,10 +222,10 @@ const Header = () => {
                 <div className="relative" ref={userRef}>
                   <button 
                     onClick={() => setShowUserMenu(!showUserMenu)}
-                    className="w-9 h-9 rounded-full bg-gradient-to-tr from-sky-400 to-slate-900 p-0.5 shadow-md hover:scale-105 transition-transform"
+                    className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gradient-to-tr from-sky-400 to-slate-900 p-0.5 shadow-md hover:scale-105 transition-transform"
                   >
                     <div className="w-full h-full rounded-full bg-white flex items-center justify-center overflow-hidden">
-                       <span className="text-sm font-bold text-slate-900">
+                       <span className="text-xs sm:text-sm font-bold text-slate-900">
                           {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
                        </span>
                     </div>
@@ -277,10 +272,10 @@ const Header = () => {
 
               {/* Mobile Menu Button */}
               <button 
-                className={`lg:hidden p-2 ${isScrolled || !isHome ? 'text-slate-900' : 'text-white'}`}
+                className={`lg:hidden p-1 sm:p-2 ${isScrolled || !isHome ? 'text-slate-900' : 'text-white'}`}
                 onClick={() => setIsMobileMenuOpen(true)}
               >
-                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" /></svg>
+                <svg className="w-6 h-6 sm:w-8 sm:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" /></svg>
               </button>
             </div>
           </div>

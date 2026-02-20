@@ -67,13 +67,9 @@ const Products = () => {
   }
 
   return (
-    <div className="container mx-auto px-1 py-6 md:py-8">
+    <div className="container mx-auto px-4 py-6 md:py-8">
       
       {/* === 1. RESPONSIVE HORIZONTAL CATEGORY SCROLL === */}
-      {/* -mx-4 px-4: Allows scroll to touch screen edges on mobile 
-         scrollbar-none: Inline style ensures scrollbar is hidden
-         snap-x: Makes scrolling feel snappy on touch
-      */}
       <div 
         className="mb-8 overflow-x-auto pb-2 -mx-4 px-4 md:mx-0 md:px-0 scroll-smooth snap-x snap-mandatory"
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
@@ -180,62 +176,96 @@ const Products = () => {
         </div>
       </div>
 
-      {/* === 3. PRODUCT GRID === */}
+      {/* === 3. PRODUCT GRID (UPGRADED TO ALIBABA STYLE) === */}
       {filteredProducts.length > 0 ? (
         <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-6">
-          {filteredProducts.map((product) => (
-            <div key={product.id} className="bg-white rounded-xl md:rounded-2xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-lg transition-all duration-300 group">
-              <div className="relative aspect-[4/5] bg-gray-100 overflow-hidden">
-                <Link to={`/products/${product.slug}`}>
-                  <LazyImage
-                    src={product.image}
-                    alt={product.name}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                    fallback={<div className="w-full h-full flex items-center justify-center text-2xl md:text-4xl">🏊</div>}
-                  />
-                </Link>
-                
-                {product.originalPrice && (
-                  <div className="absolute top-2 left-2 bg-red-500 text-white text-[10px] md:text-xs font-bold px-1.5 py-0.5 rounded shadow-sm">
-                    SALE
+          {filteredProducts.map((product) => {
+            // 🚀 GUARANTEED BUG FIX: Force Javascript to treat these as numbers
+            const price = Number(product.price) || 0;
+            const originalPrice = Number(product.originalPrice) || 0;
+            
+            // Only calculate and show discount if admin set original price > current price
+            const hasDiscount = originalPrice > price && originalPrice > 0;
+            const discountPercentage = hasDiscount 
+              ? Math.round(((originalPrice - price) / originalPrice) * 100) 
+              : 0;
+
+            return (
+              <div key={product.id} className="group flex flex-col bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm hover:shadow-2xl hover:-translate-y-1 hover:border-sky-200 transition-all duration-300">
+                <div className="relative aspect-[4/5] bg-slate-100 overflow-hidden">
+                  <Link to={`/products/${product.slug}`} className="block w-full h-full">
+                    <LazyImage
+                      src={product.image}
+                      alt={language === 'en' ? product.name : product.nameRw}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                      fallback={<div className="w-full h-full flex items-center justify-center text-4xl">🏊</div>}
+                    />
+                  </Link>
+                  
+                  {/* Dark gradient overlay on hover */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-900/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+                  
+                  {/* Admin Controlled Discount Badge */}
+                  {hasDiscount && (
+                    <div className="absolute top-2 left-2 md:top-3 md:left-3 bg-gradient-to-r from-red-500 to-rose-600 text-white text-[10px] md:text-xs font-black px-2 py-1 md:px-3 md:py-1.5 rounded-full shadow-lg z-10 flex items-center gap-1 border border-red-400/30 animate-pulse-slow pointer-events-none">
+                      <span className="text-[10px] md:text-sm leading-none">🔥</span>
+                      <span>-{discountPercentage}%</span>
+                    </div>
+                  )}
+
+                  {/* Attractive Mobile Button */}
+                  <button 
+                    onClick={(e) => { e.preventDefault(); addItem(product); }}
+                    className="lg:hidden absolute bottom-2 right-2 md:bottom-3 md:right-3 bg-gradient-to-r from-sky-500 to-blue-600 text-white w-9 h-9 md:w-10 md:h-10 rounded-full shadow-xl flex items-center justify-center active:scale-95 transition-transform z-20 border border-sky-400/50"
+                  >
+                    <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>
+                  </button>
+
+                  {/* Desktop Hover Button */}
+                  <div className="hidden lg:block absolute bottom-4 left-4 right-4 translate-y-full opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 z-20">
+                    <button 
+                      onClick={(e) => { e.preventDefault(); addItem(product); }}
+                      className="w-full bg-gradient-to-r from-sky-500 to-blue-600 text-white font-bold py-3 rounded-xl shadow-xl hover:from-sky-400 hover:to-blue-500 transition-all flex items-center justify-center gap-2 transform active:scale-95"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>
+                      {language === 'en' ? 'Add to Cart' : 'Ongeraho'}
+                    </button>
                   </div>
-                )}
+                </div>
 
-                {/* Mobile Add Button (Always Visible on bottom right of image) */}
-                <button
-                  onClick={(e) => { e.preventDefault(); addItem(product); }}
-                  className="lg:hidden absolute bottom-2 right-2 bg-white/90 text-slate-900 w-8 h-8 rounded-full shadow-md flex items-center justify-center active:scale-95 transition-transform"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>
-                </button>
-
-                {/* Desktop Add Button (Hover) */}
-                <button
-                  onClick={(e) => { e.preventDefault(); addItem(product); }}
-                  className="hidden lg:flex absolute bottom-4 right-4 bg-white text-slate-900 w-10 h-10 rounded-full shadow-xl items-center justify-center translate-y-12 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 hover:bg-sky-500 hover:text-white"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>
-                </button>
-              </div>
-
-              <div className="p-3 md:p-4">
-                <p className="text-[10px] md:text-xs text-slate-500 font-bold mb-1 uppercase tracking-wider line-clamp-1">{product.brand}</p>
-                <Link to={`/products/${product.slug}`}>
-                  <h3 className="font-bold text-slate-900 text-sm md:text-base mb-2 line-clamp-1 hover:text-sky-600 transition-colors">
-                    {language === 'en' ? product.name : product.nameRw}
-                  </h3>
-                </Link>
-                <div className="flex items-center justify-between">
-                  <div className="flex flex-col md:flex-row md:items-center md:gap-2">
-                    <span className="font-black text-sm md:text-lg text-slate-900">{formatRWF(product.price)}</span>
-                    {product.originalPrice && (
-                      <span className="text-[10px] md:text-xs text-slate-400 line-through">{formatRWF(product.originalPrice)}</span>
-                    )}
+                {/* Redesigned Text & Price Container */}
+                <div className="p-3 md:p-4 flex flex-col flex-1 bg-white">
+                  {/* Brand Tag (Optional, renders if exists) */}
+                  {product.brand && (
+                     <p className="text-[10px] md:text-xs text-slate-400 font-bold mb-1 uppercase tracking-wider line-clamp-1">
+                       {product.brand}
+                     </p>
+                  )}
+                  
+                  <Link to={`/products/${product.slug}`} className="flex-1">
+                    <h3 className="font-bold text-slate-800 text-sm md:text-base leading-tight group-hover:text-sky-600 transition-colors line-clamp-2 mb-2">
+                      {language === 'en' ? product.name : product.nameRw}
+                    </h3>
+                  </Link>
+                  
+                  <div className="flex flex-col gap-0.5 mt-auto">
+                    <p className="font-black text-sky-600 text-sm md:text-lg">
+                      {formatRWF(price)}
+                    </p>
+                    
+                    {/* Fixed height box so cards align perfectly even if there is no discount */}
+                    <div className="min-h-[16px] md:min-h-[20px]">
+                      {hasDiscount && (
+                        <p className="text-[10px] md:text-xs text-slate-400 line-through font-medium">
+                          {formatRWF(originalPrice)}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       ) : (
         <div className="min-h-[40vh] flex flex-col items-center justify-center text-center p-8 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200">

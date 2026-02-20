@@ -5,6 +5,9 @@ import useOrderStore from '../../stores/orderStore'
 import { formatRWF } from '../../utils/currency'
 import LazyImage from '../../components/LazyImage'
 import { uploadToCloudinary } from '../../utils/uploadService'
+// ADDED: Firebase imports for the Subscribers tab
+import { collection, getDocs } from 'firebase/firestore'
+import { db } from '../../config/firebase'
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('overview')
@@ -17,6 +20,9 @@ const AdminDashboard = () => {
   const [isSaving, setIsSaving] = useState(false) 
   const [editingProduct, setEditingProduct] = useState(null)
   const [editingCategory, setEditingCategory] = useState(null)
+  
+  // ADDED: State for subscribers
+  const [subscribers, setSubscribers] = useState([])
   
   const { products, fetchProducts, addProduct, updateProduct, deleteProduct, seedProducts } = useProductStore()
   const { categories, fetchCategories, addCategory, updateCategory, deleteCategory } = useCategoryStore()
@@ -34,6 +40,19 @@ const AdminDashboard = () => {
     fetchProducts();
     fetchCategories();
     fetchAllOrders(); 
+    
+    // ADDED: Fetch Subscribers automatically
+    const fetchSubs = async () => {
+      try {
+        const querySnapshot = await getDocs(collection(db, 'subscribers'))
+        const subsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+        // Sort newest first
+        setSubscribers(subsData.sort((a, b) => new Date(b.subscribedAt) - new Date(a.subscribedAt)))
+      } catch (err) {
+        console.error("Error fetching subscribers:", err)
+      }
+    }
+    fetchSubs();
   }, [fetchProducts, fetchCategories, fetchAllOrders])
 
   const handleAddProduct = () => {
@@ -139,12 +158,10 @@ const AdminDashboard = () => {
   }
 
   return (
-    // 🛠️ FIX 1: Removed 'flex' here to stop the horizontal overflow
     <div className="min-h-screen bg-slate-50">
       
       {isMobileMenuOpen && <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setIsMobileMenuOpen(false)} />}
 
-      {/* 🛠️ FIX 2: Added pt-20 to clear the global navbar properly */}
       <aside className={`fixed top-0 left-0 h-full w-64 bg-white border-r border-slate-200 z-[40] pt-20 transition-transform duration-300 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 lg:block`}>
         <div className="p-6 h-full overflow-y-auto">
           <div className="flex items-center justify-between mb-8 px-4">
@@ -152,7 +169,14 @@ const AdminDashboard = () => {
             <button onClick={() => setIsMobileMenuOpen(false)} className="lg:hidden text-slate-400">✕</button>
           </div>
           <nav className="space-y-2">
-            {[{ id: 'overview', label: 'Dashboard', icon: '📊' }, { id: 'orders', label: 'Orders', icon: '📦' }, { id: 'products', label: 'Products', icon: '🏷️' }, { id: 'categories', label: 'Categories', icon: '📂' }].map((item) => (
+            {/* ADDED: Subscribers button to the nav map */}
+            {[
+              { id: 'overview', label: 'Dashboard', icon: '📊' }, 
+              { id: 'orders', label: 'Orders', icon: '📦' }, 
+              { id: 'products', label: 'Products', icon: '🏷️' }, 
+              { id: 'categories', label: 'Categories', icon: '📂' },
+              { id: 'subscribers', label: 'Subscribers', icon: '📬' }
+            ].map((item) => (
               <button key={item.id} onClick={() => { setActiveTab(item.id); setIsMobileMenuOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all ${activeTab === item.id ? 'bg-slate-900 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'}`}>
                 <span>{item.icon}</span>{item.label}
               </button>
@@ -164,7 +188,6 @@ const AdminDashboard = () => {
         </div>
       </aside>
 
-      {/* 🛠️ FIX 3: Changed to a standard div, removed w-full, flex-1, and the double top-padding */}
       <div className="ml-0 lg:ml-64 p-4 lg:p-8">
         <div className="lg:hidden flex items-center gap-4 mb-6">
             <button onClick={() => setIsMobileMenuOpen(true)} className="p-2 bg-white rounded-lg border border-slate-200 text-2xl shadow-sm">☰</button>
@@ -184,6 +207,40 @@ const AdminDashboard = () => {
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100"><p className="text-slate-500 text-xs font-bold uppercase">Orders</p><p className="text-2xl font-black text-blue-600">{orders.length}</p></div>
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100"><p className="text-slate-500 text-xs font-bold uppercase">Pending</p><p className="text-2xl font-black text-orange-600">{orders.filter(o => o.status === 'pending').length}</p></div>
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100"><p className="text-slate-500 text-xs font-bold uppercase">Products</p><p className="text-2xl font-black text-purple-600">{products.length}</p></div>
+          </div>
+        )}
+
+        {/* ADDED: New Subscribers Tab Content */}
+        {activeTab === 'subscribers' && (
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+            <div className="p-4 lg:p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+              <h2 className="font-bold text-slate-900">Mailing List ({subscribers.length})</h2>
+              <button 
+                onClick={() => {
+                  const emails = subscribers.map(s => s.email).join(', ');
+                  navigator.clipboard.writeText(emails);
+                  alert('Emails copied to clipboard!');
+                }}
+                className="bg-slate-900 text-white hover:bg-slate-800 px-4 py-2 rounded-lg text-sm font-bold shadow-md transition"
+              >
+                Copy All Emails
+              </button>
+            </div>
+            {subscribers.length === 0 ? <p className="p-8 text-center text-slate-500">No subscribers yet.</p> : (
+              <div className="divide-y divide-slate-100">
+                {subscribers.map((sub) => (
+                  <div key={sub.id} className="p-4 lg:p-6 hover:bg-slate-50 transition flex justify-between items-center">
+                    <div>
+                      <p className="font-bold text-slate-900 text-sm md:text-base">{sub.email}</p>
+                      <p className="text-xs text-slate-400 mt-1">{new Date(sub.subscribedAt).toLocaleDateString()}</p>
+                    </div>
+                    <span className="px-3 py-1 bg-green-50 text-green-600 rounded-full text-xs font-bold uppercase">
+                      {sub.status || 'Active'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -225,24 +282,26 @@ const AdminDashboard = () => {
         )}
 
         {activeTab === 'products' && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
+          /* FIX: grid-cols-2 added for mobile to show 2 cards per row. Gap slightly reduced on mobile. */
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 lg:gap-6">
             {products.map((product) => (
-              <div key={product.id} className="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm hover:shadow-md transition group">
-                <div className="relative aspect-video bg-gray-100 overflow-hidden">
+              <div key={product.id} className="bg-white rounded-xl lg:rounded-2xl border border-slate-100 overflow-hidden shadow-sm hover:shadow-md transition group flex flex-col">
+                <div className="relative aspect-square md:aspect-video bg-gray-100 overflow-hidden">
                   <LazyImage src={product.image} alt={product.name} className="w-full h-full object-cover" />
                   {product.originalPrice > product.price && (
-                    <div className="absolute top-2 right-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">Sale</div>
+                    <div className="absolute top-2 right-2 bg-red-500 text-white text-[10px] md:text-xs font-bold px-2 py-1 rounded-full">Sale</div>
                   )}
                 </div>
-                <div className="p-4">
-                  <h3 className="font-bold text-slate-900 mb-1 line-clamp-1">{product.name}</h3>
-                  <div className="flex gap-2 items-baseline mb-3">
-                    <p className="text-slate-900 font-bold">{formatRWF(product.price)}</p>
+                {/* FIX: Adjusted padding and text sizes for tighter mobile fit */}
+                <div className="p-3 md:p-4 flex flex-col flex-1">
+                  <h3 className="font-bold text-slate-900 mb-1 text-sm md:text-base line-clamp-2 leading-tight flex-1">{product.name}</h3>
+                  <div className="flex flex-col xl:flex-row xl:gap-2 xl:items-baseline mb-3">
+                    <p className="text-slate-900 font-bold text-sm md:text-base">{formatRWF(product.price)}</p>
                     {product.originalPrice > 0 && <p className="text-xs text-slate-400 line-through">{formatRWF(product.originalPrice)}</p>}
                   </div>
-                  <div className="flex gap-2">
-                    <button onClick={() => handleEditProduct(product)} className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2 rounded-lg text-sm">Edit</button>
-                    <button onClick={() => handleDeleteProduct(product.id)} className="px-3 bg-red-50 hover:bg-red-100 text-red-500 rounded-lg">🗑️</button>
+                  <div className="flex gap-2 mt-auto">
+                    <button onClick={() => handleEditProduct(product)} className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-1.5 md:py-2 rounded-lg text-xs md:text-sm">Edit</button>
+                    <button onClick={() => handleDeleteProduct(product.id)} className="px-2.5 md:px-3 bg-red-50 hover:bg-red-100 text-red-500 rounded-lg text-xs md:text-base">🗑️</button>
                   </div>
                 </div>
               </div>

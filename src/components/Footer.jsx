@@ -8,11 +8,9 @@ const Footer = () => {
   const language = useLanguageStore((state) => state.language)
   const location = useLocation() 
   
-  // Newsletter State
   const [email, setEmail] = useState('')
-  const [subscribeStatus, setSubscribeStatus] = useState('idle') // idle, loading, success, error
+  const [subscribeStatus, setSubscribeStatus] = useState('idle') 
 
-  // 🛑 FIX: Hide the footer on admin dashboard
   if (location.pathname.startsWith('/admin')) {
     return null
   }
@@ -21,14 +19,12 @@ const Footer = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  // 📧 Handle Newsletter Subscription
   const handleSubscribe = async (e) => {
     e.preventDefault()
     if (!email.trim()) return
 
     setSubscribeStatus('loading')
     try {
-      // Save the email to a new 'subscribers' collection in Firebase
       await addDoc(collection(db, 'subscribers'), {
         email: email,
         subscribedAt: new Date().toISOString(),
@@ -36,9 +32,8 @@ const Footer = () => {
       })
       
       setSubscribeStatus('success')
-      setEmail('') // Clear the input
+      setEmail('') 
       
-      // Reset the button after 3 seconds
       setTimeout(() => setSubscribeStatus('idle'), 3000)
     } catch (error) {
       console.error("Error subscribing:", error)
@@ -47,7 +42,6 @@ const Footer = () => {
     }
   }
 
-  // 🔗 Social Media Links (Update these URLs to your actual pages when you have them!)
   const socialLinks = [
     { name: 'Instagram', url: 'https://instagram.com/kigaliswimshop', icon: '📸' },
     { name: 'Facebook', url: 'https://facebook.com/kigaliswimshop', icon: '📘' },
@@ -94,11 +88,7 @@ const Footer = () => {
   const t = translations[language]
 
   return (
-    // mt-24 lg:mt-32 pushes the footer down to create space for the wave
     <footer className="relative bg-slate-900 text-white mt-auto mt-24 lg:mt-32">
-      
-      {/* === 1. TOP WAVE TRANSITION === */}
-      {/* Shortened wave with safe negative margins to prevent overlapping text */}
       <div className="absolute top-0 left-0 right-0 -mt-8 md:-mt-16 w-full overflow-hidden leading-[0] transform rotate-180 z-10 pointer-events-none">
         <svg className="relative block w-[calc(100%+1.3px)] h-[35px] md:h-[70px]" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 120" preserveAspectRatio="none">
           <path d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V0H0V27.35A600.21,600.21,0,0,0,321.39,56.44Z" className="fill-slate-900"></path>
@@ -106,8 +96,6 @@ const Footer = () => {
       </div>
 
       <div className="container mx-auto px-4 relative z-20 pt-12 pb-12">
-        
-        {/* === 2. MASSIVE CALL TO ACTION === */}
         <div className="flex flex-col lg:flex-row items-center justify-between gap-10 border-b border-slate-800 pb-16 mb-16">
           <div className="text-center lg:text-left space-y-4">
             <h2 className="text-5xl md:text-7xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-white via-sky-200 to-sky-400 drop-shadow-lg">
@@ -118,12 +106,10 @@ const Footer = () => {
             </p>
           </div>
 
-          {/* Glass Newsletter Input */}
           <div className="w-full max-w-md">
             <div className="relative group">
               <div className="absolute -inset-0.5 bg-gradient-to-r from-sky-400 to-primary-600 rounded-full blur opacity-20 group-hover:opacity-60 transition duration-1000"></div>
               
-              {/* 🛑 FIX: Connected the form to our handleSubscribe function */}
               <form onSubmit={handleSubscribe} className="relative flex items-center bg-slate-800/80 backdrop-blur-sm rounded-full p-2 border border-slate-700 focus-within:border-sky-500 transition-colors">
                 <input 
                   type="email" 
@@ -153,13 +139,10 @@ const Footer = () => {
           </div>
         </div>
 
-        {/* === 3. MAIN GRID === */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
-          
-          {/* Brand Info */}
           <div className="space-y-6">
             <div className="flex items-center space-x-2">
-              <span className="text-4xl">🏊</span>
+              <img src="/logo.png" alt="Kigali Swim Shop Logo" className="w-10 h-10 object-contain" />
               <h3 className="text-2xl font-bold tracking-tight text-white">
                 {language === 'en' ? 'Kigali Swim Shop' : 'Ubwoba Kigali'}
               </h3>
@@ -186,7 +169,6 @@ const Footer = () => {
             </div>
           </div>
 
-          {/* Quick Links */}
           <div>
             <h4 className="font-bold text-lg mb-6 text-white">{t.quickLinks}</h4>
             <ul className="space-y-4">
@@ -208,7 +190,6 @@ const Footer = () => {
             </ul>
           </div>
 
-          {/* Customer Service */}
           <div>
             <h4 className="font-bold text-lg mb-6 text-white">{t.customerService}</h4>
             <ul className="space-y-4">
@@ -231,7 +212,6 @@ const Footer = () => {
             </ul>
           </div>
 
-          {/* Payment Methods */}
           <div>
             <h4 className="font-bold text-lg mb-6 text-white">{t.paymentMethods}</h4>
             <div className="flex flex-wrap gap-3">
@@ -253,7 +233,6 @@ const Footer = () => {
               </div>
             </div>
             
-            {/* 🛑 FIX: Real Social Media Links */}
             <h4 className="font-bold text-lg mt-8 mb-4 text-white">{t.followUs}</h4>
             <div className="flex gap-4">
                {socialLinks.map((social) => (
@@ -272,7 +251,6 @@ const Footer = () => {
           </div>
         </div>
 
-        {/* === 4. COPYRIGHT === */}
         <div className="border-t border-slate-800 mt-16 pt-8 text-center">
           <p className="text-slate-500 text-sm">
             &copy; {new Date().getFullYear()} Kigali Swim Shop. {t.rights}. 
