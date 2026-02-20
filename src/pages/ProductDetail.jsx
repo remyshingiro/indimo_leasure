@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import useCartStore from '../stores/cartStore'
 import useLanguageStore from '../stores/languageStore'
@@ -32,7 +32,7 @@ const ProductDetail = () => {
   const [showSizeChart, setShowSizeChart] = useState(false)
   
   // Accordion State
-  const [openSection, setOpenSection] = useState('description') // 'description', 'shipping', 'returns'
+  const [openSection, setOpenSection] = useState('description')
 
   // Image Gallery Logic
   const allImages = product ? [product.image, ...(product.images || [])].filter(Boolean) : []
@@ -51,6 +51,14 @@ const ProductDetail = () => {
     )
   }
 
+  // 🚀 MATH FOR DISCOUNT BADGES & 0 BUG FIX
+  const price = Number(product.price) || 0;
+  const originalPrice = Number(product.originalPrice) || 0;
+  const hasDiscount = originalPrice > price && originalPrice > 0;
+  const discountPercentage = hasDiscount 
+    ? Math.round(((originalPrice - price) / originalPrice) * 100) 
+    : 0;
+
   const handleAddToCart = () => {
     addItem({ ...product, selectedSize, selectedColor }, quantity)
   }
@@ -64,26 +72,26 @@ const ProductDetail = () => {
       
       {/* 1. BREADCRUMBS */}
       <div className="bg-slate-50 border-b border-slate-100">
-        <div className="container mx-auto px-4 py-4">
+        <div className="container mx-auto px-4 py-4 max-w-6xl">
           <nav className="text-xs md:text-sm font-medium text-slate-500 flex items-center gap-2">
-            <Link to="/" className="hover:text-primary-600 transition">Home</Link>
+            <Link to="/" className="hover:text-sky-600 transition">Home</Link>
             <span>/</span>
-            <Link to="/products" className="hover:text-primary-600 transition">Products</Link>
+            <Link to="/products" className="hover:text-sky-600 transition">Products</Link>
             <span>/</span>
             <span className="text-slate-900 line-clamp-1 font-bold">{language === 'en' ? product.name : product.nameRw}</span>
           </nav>
         </div>
       </div>
 
-      <div className="container mx-auto px-0 lg:px-4 py-0 lg:py-12">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-0 lg:gap-16">
+      {/* 🛑 FIX: max-w-6xl forces the content to be centered and readable on large screens */}
+      <div className="container mx-auto max-w-6xl px-0 lg:px-4 py-0 lg:py-12">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-0 lg:gap-12 xl:gap-16">
           
           {/* === 2. LEFT COLUMN: GALLERY === */}
-          {/* Mobile: Horizontal Swipe. Desktop: Grid */}
           <div className="space-y-4">
             
-            {/* MOBILE GALLERY (Instagram Style) */}
-            <div className="lg:hidden relative w-full bg-gray-100 aspect-square overflow-hidden group">
+            {/* MOBILE GALLERY */}
+            <div className="lg:hidden relative w-full bg-slate-50 aspect-square overflow-hidden group">
                <div className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide w-full h-full" 
                     onScroll={(e) => {
                        const scrollLeft = e.currentTarget.scrollLeft;
@@ -97,41 +105,48 @@ const ProductDetail = () => {
                  ))}
                </div>
                
-               {/* Dots Indicator */}
                {allImages.length > 1 && (
                  <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2">
                    {allImages.map((_, idx) => (
-                     <div key={idx} className={`w-2 h-2 rounded-full transition-all ${activeImage === idx ? 'bg-white w-4' : 'bg-white/50'}`} />
+                     <div key={idx} className={`w-2 h-2 rounded-full transition-all ${activeImage === idx ? 'bg-white w-4' : 'bg-white/50 border border-black/10'}`} />
                    ))}
                  </div>
                )}
                
-               {product.originalPrice && (
-                  <div className="absolute top-4 left-4 bg-red-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-md">SALE</div>
+               {/* Mobile Image Discount Badge */}
+               {hasDiscount && (
+                 <div className="absolute top-4 left-4 bg-gradient-to-r from-red-500 to-rose-600 text-white text-xs font-black px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1 border border-red-400/30">
+                   <span>🔥</span>
+                   <span>-{discountPercentage}%</span>
+                 </div>
                )}
             </div>
 
-            {/* DESKTOP GALLERY (Sticky Grid) */}
+            {/* DESKTOP GALLERY */}
             <div className="hidden lg:grid grid-cols-1 gap-4">
-              <div className="aspect-square bg-gray-50 rounded-3xl overflow-hidden border border-slate-100 relative group cursor-zoom-in">
+              <div className="aspect-square bg-slate-50 rounded-3xl overflow-hidden border border-slate-100 relative group cursor-zoom-in shadow-sm">
                  <LazyImage 
                     src={allImages[activeImage]} 
                     alt={product.name} 
                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
                  />
-                 {product.originalPrice && (
-                    <div className="absolute top-6 left-6 bg-red-500 text-white px-4 py-2 rounded-full font-bold shadow-xl">SALE</div>
+                 {/* Desktop Image Discount Badge */}
+                 {hasDiscount && (
+                   <div className="absolute top-6 left-6 bg-gradient-to-r from-red-500 to-rose-600 text-white text-sm font-black px-4 py-2 rounded-full shadow-xl flex items-center gap-1 border border-red-400/30">
+                     <span>🔥</span>
+                     <span>-{discountPercentage}%</span>
+                   </div>
                  )}
               </div>
               
               {/* Thumbnails */}
               {allImages.length > 1 && (
-                <div className="flex gap-4 overflow-x-auto py-2">
+                <div className="flex gap-4 overflow-x-auto py-2 scrollbar-hide">
                   {allImages.map((img, idx) => (
                     <button 
                       key={idx}
                       onClick={() => setActiveImage(idx)}
-                      className={`w-24 h-24 rounded-xl overflow-hidden border-2 transition-all ${activeImage === idx ? 'border-slate-900 ring-2 ring-slate-200' : 'border-transparent opacity-70 hover:opacity-100'}`}
+                      className={`w-24 h-24 rounded-xl overflow-hidden border-2 transition-all ${activeImage === idx ? 'border-sky-500 ring-2 ring-sky-100 shadow-md' : 'border-transparent opacity-70 hover:opacity-100 hover:shadow-sm'}`}
                     >
                       <LazyImage src={img} alt="Thumbnail" className="w-full h-full object-cover" />
                     </button>
@@ -141,28 +156,39 @@ const ProductDetail = () => {
             </div>
           </div>
 
-          {/* === 3. RIGHT COLUMN: DETAILS (Sticky) === */}
-          <div className="px-4 pt-6 lg:pt-0 lg:px-0">
-            <div className="sticky top-28 space-y-8">
+          {/* === 3. RIGHT COLUMN: DETAILS === */}
+          <div className="px-4 pt-6 pb-12 lg:pt-0 lg:px-0">
+            <div className="sticky top-28 space-y-6 lg:space-y-8">
               
               {/* Header */}
               <div>
                 <p className="text-sky-600 font-bold tracking-widest text-xs uppercase mb-2">
                   {product.brand || 'Kigali Swim Shop'}
                 </p>
-                <h1 className="text-3xl lg:text-5xl font-black text-slate-900 leading-tight mb-4">
+                <h1 className="text-2xl lg:text-4xl xl:text-5xl font-black text-slate-900 leading-tight mb-4">
                   {language === 'en' ? product.name : product.nameRw}
                 </h1>
                 
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2">
-                    <span className="text-4xl font-bold text-slate-900">{formatRWF(product.price)}</span>
-                    {product.originalPrice && (
-                      <span className="text-lg text-slate-400 line-through decoration-slate-400/50">{formatRWF(product.originalPrice)}</span>
+                {/* 🚀 UPGRADED PRICE LAYOUT (0 Bug Fixed) */}
+                <div className="flex flex-wrap items-center gap-3 md:gap-4">
+                  <div className="flex items-baseline gap-2 md:gap-3">
+                    <span className="text-3xl lg:text-4xl font-black text-slate-900">{formatRWF(price)}</span>
+                    {hasDiscount && (
+                      <span className="text-lg text-slate-400 line-through decoration-slate-400/50 font-medium">
+                        {formatRWF(originalPrice)}
+                      </span>
                     )}
                   </div>
+                  
+                  {/* Inline Discount Tag */}
+                  {hasDiscount && (
+                    <div className="hidden sm:flex bg-gradient-to-r from-red-50 text-red-600 border border-red-100 text-xs font-black px-2 py-1 rounded-md items-center gap-1">
+                      -{discountPercentage}% OFF
+                    </div>
+                  )}
+
                   {product.rating && (
-                    <div className="flex items-center gap-1 bg-yellow-50 px-2 py-1 rounded-lg border border-yellow-100">
+                    <div className="flex items-center gap-1 bg-yellow-50 px-2 py-1 rounded-lg border border-yellow-100 ml-auto">
                       <span className="text-yellow-500">★</span>
                       <span className="text-slate-700 font-bold text-sm">{product.rating}</span>
                     </div>
@@ -184,10 +210,10 @@ const ProductDetail = () => {
                         <button
                           key={color}
                           onClick={() => setSelectedColor(color)}
-                          className={`px-6 py-3 rounded-xl border font-bold text-sm transition-all ${
+                          className={`px-6 py-2.5 rounded-xl border font-bold text-sm transition-all shadow-sm ${
                              selectedColor === color 
-                             ? 'border-slate-900 bg-slate-900 text-white shadow-lg transform -translate-y-1' 
-                             : 'border-slate-200 text-slate-600 hover:border-slate-400 bg-white'
+                             ? 'border-sky-500 bg-sky-50 text-sky-700 ring-2 ring-sky-100' 
+                             : 'border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50 bg-white'
                           }`}
                         >
                           {color}
@@ -211,10 +237,10 @@ const ProductDetail = () => {
                         <button
                           key={size}
                           onClick={() => setSelectedSize(size)}
-                          className={`w-14 h-14 rounded-xl border font-bold text-sm flex items-center justify-center transition-all ${
+                          className={`w-12 h-12 md:w-14 md:h-14 rounded-xl border font-bold text-sm flex items-center justify-center transition-all shadow-sm ${
                              selectedSize === size 
-                             ? 'border-slate-900 bg-slate-900 text-white shadow-lg transform -translate-y-1' 
-                             : 'border-slate-200 text-slate-600 hover:border-slate-400 bg-white'
+                             ? 'border-sky-500 bg-sky-50 text-sky-700 ring-2 ring-sky-100' 
+                             : 'border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50 bg-white'
                           }`}
                         >
                           {size}
@@ -228,71 +254,70 @@ const ProductDetail = () => {
                 <div>
                    <span className="text-sm font-bold text-slate-900 block mb-3">{language === 'en' ? 'Quantity' : 'Ingano'}</span>
                    <div className="flex items-center gap-4">
-                     <div className="flex items-center border border-slate-300 rounded-xl bg-white h-12">
-                       <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-12 h-full flex items-center justify-center text-slate-500 hover:text-slate-900 text-xl">-</button>
-                       <span className="w-8 text-center font-bold text-slate-900">{quantity}</span>
-                       <button onClick={() => setQuantity(Math.min(product.stock || 10, quantity + 1))} className="w-12 h-full flex items-center justify-center text-slate-500 hover:text-slate-900 text-xl">+</button>
+                     <div className="flex items-center border border-slate-300 rounded-xl bg-white h-12 w-32 shadow-sm">
+                       <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="flex-1 h-full flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-50 rounded-l-xl text-xl transition-colors">-</button>
+                       <span className="w-10 text-center font-bold text-slate-900 border-x border-slate-100 h-full flex items-center justify-center">{quantity}</span>
+                       <button onClick={() => setQuantity(Math.min(product.stock || 10, quantity + 1))} className="flex-1 h-full flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-50 rounded-r-xl text-xl transition-colors">+</button>
                      </div>
-                     <span className="text-xs font-bold text-green-600 bg-green-50 px-3 py-1 rounded-full border border-green-100">
+                     <span className="text-xs font-bold text-green-700 bg-green-50 px-3 py-1.5 rounded-md border border-green-200">
                         {product.stock} {language === 'en' ? 'in stock' : 'biriho'}
                      </span>
                    </div>
                 </div>
               </div>
 
-              {/* Desktop Add to Cart */}
-              <div className="hidden lg:block pt-4">
+              {/* 🚀 Desktop Add to Cart (Upgraded Gradient) */}
+              <div className="hidden lg:block pt-6">
                 <button
                   onClick={handleAddToCart}
                   disabled={!product.inStock}
-                  className="w-full bg-slate-900 hover:bg-slate-800 disabled:bg-slate-300 text-white font-bold py-5 rounded-2xl text-lg shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all flex items-center justify-center gap-3"
+                  className="w-full bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 disabled:from-slate-300 disabled:to-slate-400 text-white font-black py-5 rounded-2xl text-lg shadow-[0_10px_20px_rgba(2,_132,_199,_0.3)] hover:shadow-[0_15px_30px_rgba(2,_132,_199,_0.4)] hover:-translate-y-1 transition-all flex items-center justify-center gap-3 border border-sky-400/20"
                 >
-                  <span className="text-2xl">🛒</span>
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>
                   {product.inStock 
                     ? (language === 'en' ? 'Add to Cart' : 'Ongeraho mu Gafuni')
                     : (language === 'en' ? 'Out of Stock' : 'Ntibyabonetse')
                   }
                 </button>
-                <div className="flex justify-center gap-6 mt-4 text-xs font-bold text-slate-400">
-                   <span className="flex items-center gap-1">🚚 24h Delivery</span>
-                   <span className="flex items-center gap-1">🛡️ Official Warranty</span>
-                   <span className="flex items-center gap-1">💳 Secure Pay</span>
+                <div className="flex justify-center gap-6 mt-6 text-xs font-bold text-slate-500">
+                   <span className="flex items-center gap-1.5">🚚 24h Delivery</span>
+                   <span className="flex items-center gap-1.5">🛡️ Official Warranty</span>
+                   <span className="flex items-center gap-1.5">💳 Secure Pay</span>
                 </div>
               </div>
 
               {/* Accordions (Clean Details) */}
-              <div className="border-t border-slate-100 pt-6 space-y-2">
-                
-                {/* Description Accordion */}
-                <div className="border border-slate-200 rounded-xl overflow-hidden">
+              <div className="border-t border-slate-100 pt-8 space-y-3">
+                <div className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm hover:border-slate-300 transition-colors">
                   <button 
                     onClick={() => setOpenSection(openSection === 'description' ? '' : 'description')}
-                    className="w-full flex justify-between items-center p-4 bg-slate-50 hover:bg-slate-100 transition-colors"
+                    className="w-full flex justify-between items-center p-4 lg:p-5"
                   >
                     <span className="font-bold text-slate-900">{language === 'en' ? 'Description' : 'Ibisobanuro'}</span>
-                    <span className={`transform transition-transform ${openSection === 'description' ? 'rotate-180' : ''}`}>▼</span>
+                    <span className={`transform transition-transform text-slate-400 ${openSection === 'description' ? 'rotate-180' : ''}`}>▼</span>
                   </button>
                   {openSection === 'description' && (
-                    <div className="p-4 text-slate-600 text-sm leading-relaxed bg-white animate-fade-in">
+                    <div className="p-4 lg:p-5 text-slate-600 text-sm leading-relaxed border-t border-slate-50 bg-slate-50/50 animate-fade-in">
                       {language === 'en' ? product.description : product.descriptionRw}
                     </div>
                   )}
                 </div>
 
-                {/* Shipping Accordion */}
-                <div className="border border-slate-200 rounded-xl overflow-hidden">
+                <div className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm hover:border-slate-300 transition-colors">
                   <button 
                     onClick={() => setOpenSection(openSection === 'shipping' ? '' : 'shipping')}
-                    className="w-full flex justify-between items-center p-4 bg-slate-50 hover:bg-slate-100 transition-colors"
+                    className="w-full flex justify-between items-center p-4 lg:p-5"
                   >
                     <span className="font-bold text-slate-900">{language === 'en' ? 'Shipping & Returns' : 'Ubwoba no Gusubiza'}</span>
-                    <span className={`transform transition-transform ${openSection === 'shipping' ? 'rotate-180' : ''}`}>▼</span>
+                    <span className={`transform transition-transform text-slate-400 ${openSection === 'shipping' ? 'rotate-180' : ''}`}>▼</span>
                   </button>
                   {openSection === 'shipping' && (
-                    <div className="p-4 text-slate-600 text-sm leading-relaxed bg-white animate-fade-in">
+                    <div className="p-4 lg:p-5 text-slate-600 text-sm leading-relaxed border-t border-slate-50 bg-slate-50/50 animate-fade-in">
                       <p className="mb-2"><strong>Kigali:</strong> Delivery within 24 hours (2,000 RWF).</p>
                       <p><strong>Upcountry:</strong> Delivery within 48 hours.</p>
-                      <p className="mt-2 text-xs text-slate-400">Free returns within 7 days if product is unused.</p>
+                      <p className="mt-3 p-3 bg-blue-50 text-blue-800 rounded-lg text-xs font-medium border border-blue-100">
+                        Free returns within 7 days if product is unused and in original packaging.
+                      </p>
                     </div>
                   )}
                 </div>
@@ -304,57 +329,69 @@ const ProductDetail = () => {
 
         {/* === 4. RELATED PRODUCTS === */}
         {relatedProducts.length > 0 && (
-          <div className="mt-20 pt-12 border-t border-slate-100 px-4 lg:px-0">
-             <h2 className="text-2xl font-bold mb-8 text-slate-900">
+          <div className="mt-16 lg:mt-24 pt-12 border-t border-slate-100 px-4 lg:px-0">
+             <h2 className="text-2xl font-black mb-8 text-slate-900">
                {language === 'en' ? 'You Might Also Like' : 'Ushobora Gukunda'}
              </h2>
-             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-8">
-               {relatedProducts.map(p => (
-                 <Link key={p.id} to={`/products/${p.slug}`} className="group">
-                   <div className="aspect-[4/5] bg-gray-100 rounded-2xl overflow-hidden mb-3">
-                     <LazyImage src={p.image} alt={p.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                   </div>
-                   <h3 className="font-bold text-slate-900 line-clamp-1 group-hover:text-sky-600 transition">{language === 'en' ? p.name : p.nameRw}</h3>
-                   <p className="text-slate-500 text-sm">{formatRWF(p.price)}</p>
-                 </Link>
-               ))}
+             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 lg:gap-8">
+               {relatedProducts.map(p => {
+                 const relPrice = Number(p.price) || 0;
+                 const relOrig = Number(p.originalPrice) || 0;
+                 return (
+                   <Link key={p.id} to={`/products/${p.slug}`} className="group bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+                     <div className="relative aspect-[4/5] bg-slate-100 overflow-hidden">
+                       <LazyImage src={p.image} alt={p.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                       {relOrig > relPrice && relOrig > 0 && (
+                         <div className="absolute top-2 left-2 bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded shadow-sm">
+                           SALE
+                         </div>
+                       )}
+                     </div>
+                     <div className="p-3 md:p-4">
+                       <h3 className="font-bold text-slate-800 text-sm md:text-base line-clamp-1 mb-1 group-hover:text-sky-600 transition">{language === 'en' ? p.name : p.nameRw}</h3>
+                       <p className="font-black text-sky-600 text-sm">{formatRWF(relPrice)}</p>
+                     </div>
+                   </Link>
+                 )
+               })}
              </div>
           </div>
         )}
 
       </div>
 
-      {/* === 5. MOBILE FLOATING BUY BAR === */}
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-slate-100 lg:hidden z-40 shadow-[0_-10px_30px_rgba(0,0,0,0.05)] safe-area-pb">
-        <div className="flex gap-4">
-          <div className="flex-1">
-            <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Total Price</p>
-            <p className="text-xl font-black text-slate-900">{formatRWF(product.price * quantity)}</p>
+      {/* === 5. 🚀 MOBILE FLOATING BUY BAR (Upgraded Gradient) === */}
+      <div className="fixed bottom-0 left-0 right-0 p-3 sm:p-4 bg-white/90 backdrop-blur-md border-t border-slate-200 lg:hidden z-40 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] pb-safe">
+        <div className="flex items-center gap-4 max-w-lg mx-auto">
+          <div className="flex-1 pl-2">
+            <p className="text-[10px] sm:text-xs text-slate-500 font-bold uppercase tracking-wider mb-0.5">Total</p>
+            <p className="text-lg sm:text-xl font-black text-slate-900 leading-none">{formatRWF(price * quantity)}</p>
           </div>
           <button
             onClick={handleAddToCart}
             disabled={!product.inStock}
-            className="flex-1 bg-slate-900 text-white font-bold py-3 px-6 rounded-xl shadow-lg active:scale-95 transition-transform"
+            className="flex-[1.5] bg-gradient-to-r from-sky-500 to-blue-600 disabled:from-slate-300 disabled:to-slate-400 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg active:scale-95 transition-transform flex items-center justify-center gap-2 text-sm sm:text-base border border-sky-400/20"
           >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>
             {language === 'en' ? 'Add to Cart' : 'Ongeraho'}
           </button>
         </div>
       </div>
 
-      {/* Size Chart Modal (Same as before) */}
+      {/* Size Chart Modal */}
       {showSizeChart && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-8 shadow-2xl relative">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 md:p-8 shadow-2xl relative border border-slate-100">
             <button 
               onClick={() => setShowSizeChart(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-slate-900 transition"
+              className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-900 transition"
             >
               ✕
             </button>
-            <h3 className="text-2xl font-bold mb-4 text-slate-900">
-              {language === 'en' ? 'Size Guide' : 'Inyigisho y\'Ingano'}
+            <h3 className="text-2xl font-black mb-6 text-slate-900 flex items-center gap-2">
+              <span>📏</span> {language === 'en' ? 'Size Guide' : 'Inyigisho y\'Ingano'}
             </h3>
-            <div className="overflow-hidden border border-slate-200 rounded-xl">
+            <div className="overflow-hidden border border-slate-200 rounded-xl shadow-sm">
                <table className="min-w-full divide-y divide-slate-200 text-sm">
                   <thead className="bg-slate-50">
                      <tr>
@@ -363,10 +400,10 @@ const ProductDetail = () => {
                         <th className="px-4 py-3 text-left font-bold text-slate-900">Waist</th>
                      </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-200">
-                     <tr><td className="px-4 py-3 font-medium">S</td><td className="px-4 py-3">88-96cm</td><td className="px-4 py-3">73-81cm</td></tr>
-                     <tr><td className="px-4 py-3 font-medium">M</td><td className="px-4 py-3">96-104cm</td><td className="px-4 py-3">81-89cm</td></tr>
-                     <tr><td className="px-4 py-3 font-medium">L</td><td className="px-4 py-3">104-112cm</td><td className="px-4 py-3">89-97cm</td></tr>
+                  <tbody className="divide-y divide-slate-200 bg-white">
+                     <tr className="hover:bg-slate-50 transition"><td className="px-4 py-3 font-bold text-slate-900">S</td><td className="px-4 py-3 text-slate-600">88-96cm</td><td className="px-4 py-3 text-slate-600">73-81cm</td></tr>
+                     <tr className="hover:bg-slate-50 transition"><td className="px-4 py-3 font-bold text-slate-900">M</td><td className="px-4 py-3 text-slate-600">96-104cm</td><td className="px-4 py-3 text-slate-600">81-89cm</td></tr>
+                     <tr className="hover:bg-slate-50 transition"><td className="px-4 py-3 font-bold text-slate-900">L</td><td className="px-4 py-3 text-slate-600">104-112cm</td><td className="px-4 py-3 text-slate-600">89-97cm</td></tr>
                   </tbody>
                </table>
             </div>
