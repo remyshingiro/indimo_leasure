@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { toast } from 'react-hot-toast' // 🚀 ADDED: Import toast
 
 // Load from localStorage on init
 const loadCart = () => {
@@ -27,10 +28,12 @@ const useCartStore = create((set, get) => ({
       const existingItem = state.items.find(item => item.id === product.id)
       const currentQty = existingItem ? existingItem.quantity : 0
       
-      // 🛑 INVENTORY CHECK: Prevent adding more than available stock
+      // 🛑 INVENTORY CHECK: Using Premium Toast instead of browser alert
       if (currentQty + quantity > (product.stock || 0)) {
-        alert(`Sorry! We only have ${product.stock || 0} of these in stock.`)
-        return state // Keep state exactly the same, abort addition
+        toast.error(`Only ${product.stock || 0} items available in stock.`, {
+          id: 'stock-limit', // Prevents toast spamming
+        })
+        return state 
       }
 
       let newItems
@@ -43,6 +46,13 @@ const useCartStore = create((set, get) => ({
       } else {
         newItems = [...state.items, { ...product, quantity }]
       }
+
+      // ✅ SUCCESS TOAST: Notifies user that the item was added
+      toast.success(`${product.name} added to bag!`, {
+        icon: '🛒',
+        id: 'cart-success', 
+      })
+
       saveCart(newItems)
       return { items: newItems }
     })
@@ -50,7 +60,17 @@ const useCartStore = create((set, get) => ({
   
   removeItem: (productId) => {
     set((state) => {
+      const itemToRemove = state.items.find(item => item.id === productId)
       const newItems = state.items.filter(item => item.id !== productId)
+      
+      // 🗑️ REMOVED TOAST: Visual feedback for deleting an item
+      if (itemToRemove) {
+        toast(`${itemToRemove.name} removed`, {
+          icon: '🗑️',
+          id: 'cart-remove',
+        })
+      }
+
       saveCart(newItems)
       return { items: newItems }
     })
@@ -60,10 +80,12 @@ const useCartStore = create((set, get) => ({
     set((state) => {
       const itemToUpdate = state.items.find(item => item.id === productId)
       
-      // 🛑 INVENTORY CHECK: Prevent increasing quantity past max stock in the cart view
+      // 🛑 INVENTORY CHECK: Using Premium Toast
       if (itemToUpdate && quantity > (itemToUpdate.stock || 0)) {
-        alert(`Sorry! We only have ${itemToUpdate.stock || 0} of these in stock.`)
-        return state // Abort update
+        toast.error(`Maximum stock reached (${itemToUpdate.stock}).`, {
+          id: 'stock-limit',
+        })
+        return state 
       }
 
       const newItems = state.items.map(item =>

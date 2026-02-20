@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom' 
+import { toast } from 'react-hot-toast' // 🚀 ADDED
 import useLanguageStore from '../stores/languageStore'
 import { collection, addDoc } from 'firebase/firestore'
 import { db } from '../config/firebase'
@@ -31,12 +32,25 @@ const Footer = () => {
         status: 'active'
       })
       
+      // 🚀 SUCCESS TOAST
+      toast.success(
+        language === 'en' ? 'Welcome to the community! 🎉' : 'Murakoze kwiyandikisha! 🎉',
+        { id: 'footer-subscribe' }
+      )
+
       setSubscribeStatus('success')
       setEmail('') 
       
       setTimeout(() => setSubscribeStatus('idle'), 3000)
     } catch (error) {
       console.error("Error subscribing:", error)
+      
+      // 🚀 ERROR TOAST
+      toast.error(
+        language === 'en' ? 'Subscription failed. Try again.' : 'Habaye ikibazo. Ongera ugerageze.',
+        { id: 'footer-error' }
+      )
+
       setSubscribeStatus('error')
       setTimeout(() => setSubscribeStatus('idle'), 3000)
     }
@@ -142,6 +156,7 @@ const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
           <div className="space-y-6">
             <div className="flex items-center space-x-2">
+              {/* Site Logo - Verified Working */}
               <img src="/logo.png" alt="Kigali Swim Shop Logo" className="w-10 h-10 object-contain" />
               <h3 className="text-2xl font-bold tracking-tight text-white">
                 {language === 'en' ? 'Kigali Swim Shop' : 'Ubwoba Kigali'}

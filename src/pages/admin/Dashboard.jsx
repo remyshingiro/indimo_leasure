@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react'
+import { toast } from 'react-hot-toast'
 import useProductStore from '../../stores/productStore'
 import useCategoryStore from '../../stores/categoryStore'
 import useOrderStore from '../../stores/orderStore'
 import { formatRWF } from '../../utils/currency'
 import LazyImage from '../../components/LazyImage'
 import { uploadToCloudinary } from '../../utils/uploadService'
-// ADDED: Firebase imports for the Subscribers tab
 import { collection, getDocs } from 'firebase/firestore'
 import { db } from '../../config/firebase'
 
@@ -13,15 +13,11 @@ const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('overview')
   const [showProductModal, setShowProductModal] = useState(false)
   const [showCategoryModal, setShowCategoryModal] = useState(false)
-  
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  
   const [isUploading, setIsUploading] = useState(false)
   const [isSaving, setIsSaving] = useState(false) 
   const [editingProduct, setEditingProduct] = useState(null)
   const [editingCategory, setEditingCategory] = useState(null)
-  
-  // ADDED: State for subscribers
   const [subscribers, setSubscribers] = useState([])
   
   const { products, fetchProducts, addProduct, updateProduct, deleteProduct, seedProducts } = useProductStore()
@@ -41,12 +37,10 @@ const AdminDashboard = () => {
     fetchCategories();
     fetchAllOrders(); 
     
-    // ADDED: Fetch Subscribers automatically
     const fetchSubs = async () => {
       try {
         const querySnapshot = await getDocs(collection(db, 'subscribers'))
         const subsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
-        // Sort newest first
         setSubscribers(subsData.sort((a, b) => new Date(b.subscribedAt) - new Date(a.subscribedAt)))
       } catch (err) {
         console.error("Error fetching subscribers:", err)
@@ -75,14 +69,19 @@ const AdminDashboard = () => {
   }
 
   const handleDeleteProduct = async (productId) => {
-    if(window.confirm('Are you sure you want to delete this product?')) {
-        await deleteProduct(productId);
+    if(window.confirm('Are you sure?')) {
+        try {
+          await deleteProduct(productId);
+          toast.success('Product deleted');
+        } catch (e) {
+          toast.error('Failed to delete');
+        }
     }
   }
 
   const handleSaveProduct = async () => {
-    if (!productForm.name || !productForm.price) return alert('Name and Price required')
-    if (!productForm.category) return alert('Please select a category')
+    if (!productForm.name || !productForm.price) return toast.error('Name and Price required')
+    if (!productForm.category) return toast.error('Please select a category')
     
     setIsSaving(true);
     try {
@@ -109,12 +108,14 @@ const AdminDashboard = () => {
 
       if (editingProduct) {
         await updateProduct(editingProduct.id, productData);
+        toast.success('Product updated!');
       } else {
         await addProduct({ ...productData, createdAt: new Date().toISOString() });
+        toast.success('New product added!');
       }
       setShowProductModal(false);
     } catch (error) {
-      alert("Error saving: " + error.message);
+      toast.error("Error: " + error.message);
     } finally {
       setIsSaving(false);
     }
@@ -135,41 +136,58 @@ const AdminDashboard = () => {
   }
 
   const handleDeleteCategory = async (catId) => {
-    if(window.confirm('Delete this category?')) await deleteCategory(catId);
+    if(window.confirm('Delete category?')) {
+      try {
+        await deleteCategory(catId);
+        toast.success('Category removed');
+      } catch (e) {
+        toast.error('Failed to remove category');
+      }
+    }
   }
 
   const handleSaveCategory = async () => {
-    if (!categoryForm.name) return alert('Category Name required')
+    if (!categoryForm.name) return toast.error('Category Name required')
     setIsSaving(true);
     try {
-        const categoryData = { ...categoryForm, id: editingCategory ? editingCategory.id : categoryForm.name.toLowerCase().replace(/\s+/g, '-') };
+        const catId = editingCategory ? editingCategory.id : categoryForm.name.toLowerCase().replace(/\s+/g, '-');
+        const categoryData = { ...categoryForm, id: catId };
+        
         if (editingCategory) {
             await updateCategory(editingCategory.id, categoryData);
+            toast.success('Category updated');
         } else {
-            const { id, ...dataToSave } = categoryData;
             await addCategory(categoryData);
+            toast.success('Category created');
         }
         setShowCategoryModal(false)
     } catch (error) {
-        alert("Failed to save category");
+        toast.error("Failed to save category");
     } finally {
         setIsSaving(false);
     }
   }
 
+  const handleStatusChange = async (orderId, newStatus) => {
+    try {
+      await updateOrderStatus(orderId, newStatus);
+      toast.success(`Order set to ${newStatus}`, { icon: '📦' });
+    } catch (e) {
+      toast.error('Failed to update status');
+    }
+  }
+
   return (
     <div className="min-h-screen bg-slate-50">
-      
       {isMobileMenuOpen && <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setIsMobileMenuOpen(false)} />}
 
       <aside className={`fixed top-0 left-0 h-full w-64 bg-white border-r border-slate-200 z-[40] pt-20 transition-transform duration-300 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 lg:block`}>
         <div className="p-6 h-full overflow-y-auto">
           <div className="flex items-center justify-between mb-8 px-4">
-            <div className="flex items-center gap-2"><span className="text-2xl">⚡</span><span className="font-black text-xl text-slate-900">Admin</span></div>
+            <div className="flex items-center gap-2"><span className="text-2xl">⚡</span><span className="font-black text-xl text-slate-900 tracking-tighter">Admin</span></div>
             <button onClick={() => setIsMobileMenuOpen(false)} className="lg:hidden text-slate-400">✕</button>
           </div>
           <nav className="space-y-2">
-            {/* ADDED: Subscribers button to the nav map */}
             {[
               { id: 'overview', label: 'Dashboard', icon: '📊' }, 
               { id: 'orders', label: 'Orders', icon: '📦' }, 
@@ -177,64 +195,66 @@ const AdminDashboard = () => {
               { id: 'categories', label: 'Categories', icon: '📂' },
               { id: 'subscribers', label: 'Subscribers', icon: '📬' }
             ].map((item) => (
-              <button key={item.id} onClick={() => { setActiveTab(item.id); setIsMobileMenuOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all ${activeTab === item.id ? 'bg-slate-900 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'}`}>
+              <button key={item.id} onClick={() => { setActiveTab(item.id); setIsMobileMenuOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all ${activeTab === item.id ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'}`}>
                 <span>{item.icon}</span>{item.label}
               </button>
             ))}
           </nav>
           <div className="mt-8 px-4">
-            <button onClick={seedProducts} className="w-full py-3 bg-green-50 text-green-700 font-bold rounded-xl text-sm hover:bg-green-100 border border-green-200 transition">🚀 Upload Mock Data</button>
+            <button onClick={async () => {
+              await seedProducts();
+              toast.success('Mock data uploaded');
+            }} className="w-full py-3 bg-green-50 text-green-700 font-black rounded-xl text-[10px] uppercase tracking-widest hover:bg-green-100 border border-green-200 transition">🚀 Seed Data</button>
           </div>
         </div>
       </aside>
 
-      <div className="ml-0 lg:ml-64 p-4 lg:p-8">
+      <div className="ml-0 lg:ml-64 p-4 lg:p-8 pt-24 lg:pt-8">
         <div className="lg:hidden flex items-center gap-4 mb-6">
-            <button onClick={() => setIsMobileMenuOpen(true)} className="p-2 bg-white rounded-lg border border-slate-200 text-2xl shadow-sm">☰</button>
-            <h1 className="text-xl font-black text-slate-900 capitalize">{activeTab}</h1>
+            <button onClick={() => setIsMobileMenuOpen(true)} className="p-2 bg-white rounded-lg border border-slate-200 text-2xl shadow-sm text-slate-600">☰</button>
+            <h1 className="text-xl font-black text-slate-900 capitalize tracking-tight">{activeTab}</h1>
         </div>
         <div className="hidden lg:flex justify-between items-end mb-8">
-          <div><h1 className="text-3xl font-black text-slate-900 capitalize">{activeTab}</h1><p className="text-slate-500 text-sm mt-1">Manage your store efficiently</p></div>
+          <div><h1 className="text-3xl font-black text-slate-900 capitalize tracking-tight">{activeTab}</h1><p className="text-slate-500 text-sm font-medium">Store management systems active.</p></div>
           <div className="flex gap-2">
-            {activeTab === 'products' && <button onClick={handleAddProduct} className="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-lg font-bold text-sm shadow-lg">+ Add Product</button>}
-            {activeTab === 'categories' && <button onClick={handleAddCategory} className="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-lg font-bold text-sm shadow-lg">+ Add Category</button>}
+            {activeTab === 'products' && <button onClick={handleAddProduct} className="bg-slate-900 hover:bg-slate-800 text-white px-6 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest shadow-lg transition-all">+ Add Product</button>}
+            {activeTab === 'categories' && <button onClick={handleAddCategory} className="bg-slate-900 hover:bg-slate-800 text-white px-6 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest shadow-lg transition-all">+ Add Category</button>}
           </div>
         </div>
 
         {activeTab === 'overview' && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100"><p className="text-slate-500 text-xs font-bold uppercase">Revenue</p><p className="text-2xl font-black text-green-600">{formatRWF(orders.reduce((sum, o) => sum + (o.total || 0), 0))}</p></div>
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100"><p className="text-slate-500 text-xs font-bold uppercase">Orders</p><p className="text-2xl font-black text-blue-600">{orders.length}</p></div>
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100"><p className="text-slate-500 text-xs font-bold uppercase">Pending</p><p className="text-2xl font-black text-orange-600">{orders.filter(o => o.status === 'pending').length}</p></div>
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100"><p className="text-slate-500 text-xs font-bold uppercase">Products</p><p className="text-2xl font-black text-purple-600">{products.length}</p></div>
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100"><p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1">Revenue</p><p className="text-2xl font-black text-green-600">{formatRWF(orders.reduce((sum, o) => sum + (o.total || 0), 0))}</p></div>
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100"><p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1">Total Orders</p><p className="text-2xl font-black text-sky-600">{orders.length}</p></div>
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100"><p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1">Pending Action</p><p className="text-2xl font-black text-orange-500">{orders.filter(o => o.status === 'pending').length}</p></div>
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100"><p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1">Inventory</p><p className="text-2xl font-black text-purple-600">{products.length}</p></div>
           </div>
         )}
 
-        {/* ADDED: New Subscribers Tab Content */}
         {activeTab === 'subscribers' && (
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-            <div className="p-4 lg:p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-              <h2 className="font-bold text-slate-900">Mailing List ({subscribers.length})</h2>
+          <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+            <div className="p-4 lg:p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/30">
+              <h2 className="font-black text-slate-900 text-sm uppercase tracking-widest">Mailing List ({subscribers.length})</h2>
               <button 
                 onClick={() => {
                   const emails = subscribers.map(s => s.email).join(', ');
                   navigator.clipboard.writeText(emails);
-                  alert('Emails copied to clipboard!');
+                  toast.success('Emails copied to clipboard!', { icon: '📋' });
                 }}
-                className="bg-slate-900 text-white hover:bg-slate-800 px-4 py-2 rounded-lg text-sm font-bold shadow-md transition"
+                className="bg-sky-500 text-white hover:bg-sky-600 px-5 py-2 rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-sky-100 transition"
               >
-                Copy All Emails
+                Copy All
               </button>
             </div>
-            {subscribers.length === 0 ? <p className="p-8 text-center text-slate-500">No subscribers yet.</p> : (
-              <div className="divide-y divide-slate-100">
+            {subscribers.length === 0 ? <p className="p-12 text-center text-slate-400 font-medium">No subscribers found in database.</p> : (
+              <div className="divide-y divide-slate-50">
                 {subscribers.map((sub) => (
                   <div key={sub.id} className="p-4 lg:p-6 hover:bg-slate-50 transition flex justify-between items-center">
                     <div>
-                      <p className="font-bold text-slate-900 text-sm md:text-base">{sub.email}</p>
-                      <p className="text-xs text-slate-400 mt-1">{new Date(sub.subscribedAt).toLocaleDateString()}</p>
+                      <p className="font-black text-slate-900 text-sm">{sub.email}</p>
+                      <p className="text-[10px] text-slate-400 font-bold mt-1 uppercase tracking-tighter">Joined {new Date(sub.subscribedAt).toLocaleDateString()}</p>
                     </div>
-                    <span className="px-3 py-1 bg-green-50 text-green-600 rounded-full text-xs font-bold uppercase">
+                    <span className="px-3 py-1 bg-green-50 text-green-600 rounded-lg text-[10px] font-black uppercase tracking-widest border border-green-100">
                       {sub.status || 'Active'}
                     </span>
                   </div>
@@ -245,26 +265,26 @@ const AdminDashboard = () => {
         )}
 
         {activeTab === 'orders' && (
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-            {orders.length === 0 ? <p className="p-8 text-center text-slate-500">No orders yet.</p> : (
-              <div className="divide-y divide-slate-100">
+          <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+            {orders.length === 0 ? <p className="p-12 text-center text-slate-400 font-medium">No order logs available.</p> : (
+              <div className="divide-y divide-slate-50">
                 {orders.map((order) => (
                   <div key={order.id} className="p-4 lg:p-6 hover:bg-slate-50 transition">
-                    <div className="flex flex-col gap-3">
+                    <div className="flex flex-col gap-4">
                       <div className="flex justify-between items-start">
                         <div>
-                            <h3 className="font-bold text-slate-900">Order #{order.id.slice(-6).toUpperCase()}</h3>
-                            <p className="text-sm text-slate-500">{order.customer?.fullName} • {order.customer?.phone}</p>
-                            <p className="text-xs text-slate-400 mt-1">{new Date(order.createdAt).toLocaleDateString()}</p>
+                            <h3 className="font-black text-slate-900 tracking-tight">Order #{order.id.slice(-6).toUpperCase()}</h3>
+                            <p className="text-xs font-bold text-slate-500 mt-1 uppercase tracking-wider">{order.customer?.fullName} • {order.customer?.phone}</p>
+                            <p className="text-[10px] text-slate-400 font-medium mt-1">{new Date(order.createdAt).toLocaleDateString()}</p>
                         </div>
-                        <span className="font-black text-slate-900">{formatRWF(order.total)}</span>
+                        <span className="font-black text-sky-600 text-lg">{formatRWF(order.total)}</span>
                       </div>
                       <select 
                         value={order.status}
-                        onChange={(e) => updateOrderStatus(order.id, e.target.value)}
-                        className={`w-full bg-white border border-slate-200 text-sm font-bold py-2 px-3 rounded-lg ${
+                        onChange={(e) => handleStatusChange(order.id, e.target.value)}
+                        className={`w-full bg-white border border-slate-200 text-xs font-black uppercase tracking-widest py-3 px-4 rounded-xl shadow-sm outline-none focus:ring-2 focus:ring-sky-500/10 ${
                             order.status === 'completed' ? 'text-green-600' : 
-                            order.status === 'cancelled' ? 'text-red-600' : 
+                            order.status === 'cancelled' ? 'text-rose-500' : 
                             'text-orange-500'
                         }`}
                       >
@@ -282,26 +302,24 @@ const AdminDashboard = () => {
         )}
 
         {activeTab === 'products' && (
-          /* FIX: grid-cols-2 added for mobile to show 2 cards per row. Gap slightly reduced on mobile. */
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 lg:gap-6">
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6">
             {products.map((product) => (
-              <div key={product.id} className="bg-white rounded-xl lg:rounded-2xl border border-slate-100 overflow-hidden shadow-sm hover:shadow-md transition group flex flex-col">
-                <div className="relative aspect-square md:aspect-video bg-gray-100 overflow-hidden">
-                  <LazyImage src={product.image} alt={product.name} className="w-full h-full object-cover" />
+              <div key={product.id} className="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm hover:shadow-xl transition-all group flex flex-col">
+                <div className="relative aspect-[4/3] bg-slate-50 overflow-hidden">
+                  <LazyImage src={product.image} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
                   {product.originalPrice > product.price && (
-                    <div className="absolute top-2 right-2 bg-red-500 text-white text-[10px] md:text-xs font-bold px-2 py-1 rounded-full">Sale</div>
+                    <div className="absolute top-2 right-2 bg-rose-500 text-white text-[10px] font-black px-2 py-1 rounded-md shadow-lg">SALE</div>
                   )}
                 </div>
-                {/* FIX: Adjusted padding and text sizes for tighter mobile fit */}
-                <div className="p-3 md:p-4 flex flex-col flex-1">
-                  <h3 className="font-bold text-slate-900 mb-1 text-sm md:text-base line-clamp-2 leading-tight flex-1">{product.name}</h3>
-                  <div className="flex flex-col xl:flex-row xl:gap-2 xl:items-baseline mb-3">
-                    <p className="text-slate-900 font-bold text-sm md:text-base">{formatRWF(product.price)}</p>
-                    {product.originalPrice > 0 && <p className="text-xs text-slate-400 line-through">{formatRWF(product.originalPrice)}</p>}
+                <div className="p-3 md:p-5 flex flex-col flex-1">
+                  <h3 className="font-black text-slate-900 mb-1 text-sm md:text-base line-clamp-2 leading-tight flex-1 uppercase tracking-tight">{product.name}</h3>
+                  <div className="flex flex-col mb-4">
+                    <p className="text-sky-600 font-black text-sm md:text-lg">{formatRWF(product.price)}</p>
+                    {product.originalPrice > 0 && <p className="text-[10px] text-slate-400 line-through font-bold tracking-tighter">{formatRWF(product.originalPrice)}</p>}
                   </div>
                   <div className="flex gap-2 mt-auto">
-                    <button onClick={() => handleEditProduct(product)} className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-1.5 md:py-2 rounded-lg text-xs md:text-sm">Edit</button>
-                    <button onClick={() => handleDeleteProduct(product.id)} className="px-2.5 md:px-3 bg-red-50 hover:bg-red-100 text-red-500 rounded-lg text-xs md:text-base">🗑️</button>
+                    <button onClick={() => handleEditProduct(product)} className="flex-1 bg-slate-900 text-white font-black py-2.5 rounded-xl text-[10px] uppercase tracking-widest hover:bg-slate-800 transition-all">Edit</button>
+                    <button onClick={() => handleDeleteProduct(product.id)} className="px-4 bg-rose-50 hover:bg-rose-100 text-rose-500 rounded-xl transition-colors">🗑️</button>
                   </div>
                 </div>
               </div>
@@ -310,16 +328,16 @@ const AdminDashboard = () => {
         )}
 
         {activeTab === 'categories' && (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
             {categories.map((cat) => (
-              <div key={cat.id} className="bg-white rounded-2xl border border-slate-100 p-4 lg:p-6 flex flex-col items-center text-center">
-                <div className="w-12 h-12 lg:w-16 lg:h-16 rounded-full bg-slate-100 flex items-center justify-center text-2xl lg:text-3xl mb-3 overflow-hidden">
+              <div key={cat.id} className="bg-white rounded-3xl border border-slate-100 p-6 flex flex-col items-center text-center shadow-sm hover:shadow-lg transition-all group">
+                <div className="w-16 h-16 rounded-2xl bg-slate-50 flex items-center justify-center text-3xl mb-4 overflow-hidden border border-slate-100 group-hover:scale-110 transition-transform">
                   {cat.image ? <img src={cat.image} alt={cat.name} className="w-full h-full object-cover" /> : cat.icon}
                 </div>
-                <h3 className="font-bold text-sm lg:text-base text-slate-900">{cat.name}</h3>
-                <div className="mt-3 flex gap-2 w-full">
-                   <button onClick={() => handleEditCategory(cat)} className="flex-1 bg-slate-100 text-slate-700 py-1 rounded text-xs font-bold">Edit</button>
-                   <button onClick={() => handleDeleteCategory(cat.id)} className="px-2 bg-red-50 text-red-500 rounded text-xs">✕</button>
+                <h3 className="font-black text-sm text-slate-900 uppercase tracking-widest mb-4">{cat.name}</h3>
+                <div className="flex gap-2 w-full">
+                   <button onClick={() => handleEditCategory(cat)} className="flex-1 bg-slate-100 text-slate-600 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition-all">Edit</button>
+                   <button onClick={() => handleDeleteCategory(cat.id)} className="px-3 bg-rose-50 text-rose-500 rounded-xl hover:bg-rose-100 transition-all">✕</button>
                 </div>
               </div>
             ))}
@@ -327,22 +345,21 @@ const AdminDashboard = () => {
         )}
       </div>
 
-      {/* === PRODUCT MODAL === */}
       {showProductModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-end lg:items-center justify-center p-0 lg:p-4">
-          <div className="bg-white rounded-t-3xl lg:rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl p-6 lg:p-8">
-            <h2 className="text-2xl font-black text-slate-900 mb-6">{editingProduct ? 'Edit Product' : 'New Product'}</h2>
-            <div className="space-y-4">
-               <div className="grid grid-cols-2 gap-4">
-                 <div><label className="text-xs font-bold text-slate-500 uppercase">Name (English)</label><input value={productForm.name} onChange={e => setProductForm({...productForm, name: e.target.value})} className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200" /></div>
-                 <div><label className="text-xs font-bold text-slate-500 uppercase">Name (Kinyarwanda)</label><input value={productForm.nameRw} onChange={e => setProductForm({...productForm, nameRw: e.target.value})} className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200" /></div>
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] flex items-end lg:items-center justify-center p-0 lg:p-4">
+          <div className="bg-white rounded-t-[2.5rem] lg:rounded-[2.5rem] w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl p-6 lg:p-10 border border-slate-100">
+            <h2 className="text-2xl font-black text-slate-900 mb-8 tracking-tighter">{editingProduct ? 'Edit Product' : 'New Gear Addition'}</h2>
+            <div className="space-y-6">
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                 <div><label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1.5 block">Name (EN)</label><input value={productForm.name} onChange={e => setProductForm({...productForm, name: e.target.value})} className="w-full p-4 bg-slate-50 rounded-2xl border border-slate-200 font-medium focus:ring-4 focus:ring-sky-500/10 outline-none" /></div>
+                 <div><label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1.5 block">Name (RW)</label><input value={productForm.nameRw} onChange={e => setProductForm({...productForm, nameRw: e.target.value})} className="w-full p-4 bg-slate-50 rounded-2xl border border-slate-200 font-medium focus:ring-4 focus:ring-sky-500/10 outline-none" /></div>
                </div>
 
                <div>
-                  <label className="text-xs font-bold text-slate-500 uppercase">Category</label>
-                  <div className="flex flex-wrap gap-2 mt-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-3 block">Category Assignment</label>
+                  <div className="flex flex-wrap gap-2">
                     {categories.map((cat) => (
-                        <button key={cat.id} onClick={() => setProductForm({ ...productForm, category: cat.id })} className={`px-4 py-2 rounded-full text-sm font-bold transition-all border ${productForm.category === cat.id ? 'bg-slate-900 text-white border-slate-900 shadow-md' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}>
+                        <button key={cat.id} onClick={() => setProductForm({ ...productForm, category: cat.id })} className={`px-5 py-2.5 rounded-full text-xs font-black tracking-widest uppercase transition-all border ${productForm.category === cat.id ? 'bg-slate-900 text-white border-slate-900 shadow-xl' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}>
                             {cat.icon} {cat.name}
                         </button>
                     ))}
@@ -350,32 +367,23 @@ const AdminDashboard = () => {
                </div>
                
                <div className="grid grid-cols-2 gap-4">
-                 <div><label className="text-xs font-bold text-slate-500 uppercase">Price (RWF)</label><input type="number" value={productForm.price} onChange={e => setProductForm({...productForm, price: e.target.value})} className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200" /></div>
-                 <div><label className="text-xs font-bold text-slate-500 uppercase">Original Price (Optional)</label><input type="number" value={productForm.originalPrice} onChange={e => setProductForm({...productForm, originalPrice: e.target.value})} className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200" /></div>
+                 <div><label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1.5 block">Sale Price</label><input type="number" value={productForm.price} onChange={e => setProductForm({...productForm, price: e.target.value})} className="w-full p-4 bg-slate-50 rounded-2xl border border-slate-200 font-black text-sky-600 focus:ring-4 focus:ring-sky-500/10 outline-none" /></div>
+                 <div><label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1.5 block">Retail Price</label><input type="number" value={productForm.originalPrice} onChange={e => setProductForm({...productForm, originalPrice: e.target.value})} className="w-full p-4 bg-slate-50 rounded-2xl border border-slate-200 font-medium text-slate-400 focus:ring-4 focus:ring-sky-500/10 outline-none" /></div>
                </div>
                
                <div className="grid grid-cols-2 gap-4">
-                 <div><label className="text-xs font-bold text-slate-500 uppercase">Brand</label><input value={productForm.brand} onChange={e => setProductForm({...productForm, brand: e.target.value})} className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200" /></div>
-                 <div><label className="text-xs font-bold text-slate-500 uppercase">Stock Quantity</label><input type="number" value={productForm.stock} onChange={e => setProductForm({...productForm, stock: e.target.value})} className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200" /></div>
+                 <div><label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1.5 block">Brand</label><input value={productForm.brand} onChange={e => setProductForm({...productForm, brand: e.target.value})} className="w-full p-4 bg-slate-50 rounded-2xl border border-slate-200 font-medium focus:ring-4 focus:ring-sky-500/10 outline-none" /></div>
+                 <div><label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1.5 block">Stock Units</label><input type="number" value={productForm.stock} onChange={e => setProductForm({...productForm, stock: e.target.value})} className="w-full p-4 bg-slate-50 rounded-2xl border border-slate-200 font-bold focus:ring-4 focus:ring-sky-500/10 outline-none" /></div>
                </div>
 
-               <div className="grid grid-cols-2 gap-4">
-                 <div><label className="text-xs font-bold text-slate-500 uppercase">Sizes (Comma separated)</label><input value={productForm.sizes} onChange={e => setProductForm({...productForm, sizes: e.target.value})} className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200" placeholder="S, M, L" /></div>
-                 <div><label className="text-xs font-bold text-slate-500 uppercase">Colors (Comma separated)</label><input value={productForm.colors} onChange={e => setProductForm({...productForm, colors: e.target.value})} className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200" placeholder="Red, Blue" /></div>
-               </div>
-
-               <div><label className="text-xs font-bold text-slate-500 uppercase">Description (English)</label><textarea value={productForm.description} onChange={e => setProductForm({...productForm, description: e.target.value})} className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200 h-20" /></div>
-               <div><label className="text-xs font-bold text-slate-500 uppercase">Description (Kinyarwanda)</label><textarea value={productForm.descriptionRw} onChange={e => setProductForm({...productForm, descriptionRw: e.target.value})} className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200 h-20" /></div>
+               <div><label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1.5 block">Description (EN)</label><textarea value={productForm.description} onChange={e => setProductForm({...productForm, description: e.target.value})} className="w-full p-4 bg-slate-50 rounded-2xl border border-slate-200 h-24 font-medium outline-none" /></div>
 
                <div>
-                 <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Product Image</label>
-                 <div className="space-y-3">
-                    <div className={`border-2 border-dashed rounded-xl p-6 text-center transition-colors ${isUploading ? 'bg-slate-50 border-slate-300' : 'border-slate-300 hover:border-slate-900 hover:bg-slate-50'}`}>
+                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-3 block">Media Assets</label>
+                 <div className="flex items-center gap-6">
+                    <div className={`flex-1 border-2 border-dashed rounded-2xl p-8 text-center transition-all ${isUploading ? 'bg-slate-50 border-slate-300' : 'border-slate-200 hover:border-slate-900 hover:bg-slate-50'}`}>
                       <div className="relative">
-                        <input 
-                          type="file" 
-                          accept="image/*" 
-                          disabled={isUploading} 
+                        <input type="file" accept="image/*" disabled={isUploading} 
                           onChange={async (e) => { 
                             const file = e.target.files[0]; 
                             if (!file) return; 
@@ -384,8 +392,9 @@ const AdminDashboard = () => {
                               const url = await uploadToCloudinary(file); 
                               setProductForm(prev => ({ ...prev, image: url })); 
                               setImagePreview(url); 
+                              toast.success('Image ready');
                             } catch (error) { 
-                              alert('Upload failed.'); 
+                              toast.error('Upload failed'); 
                             } finally { 
                               setIsUploading(false); 
                             } 
@@ -393,40 +402,35 @@ const AdminDashboard = () => {
                           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" 
                         />
                         <div className="flex flex-col items-center justify-center pointer-events-none">
-                          {isUploading ? <span className="text-sm font-bold text-slate-500">Uploading...</span> : <><span className="text-2xl mb-1">☁️</span><span className="text-sm font-bold text-slate-700">Tap to Upload</span></>}
+                          {isUploading ? <div className="w-6 h-6 border-2 border-slate-300 border-t-slate-900 rounded-full animate-spin" /> : <><span className="text-3xl mb-2">☁️</span><span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Upload Gear Image</span></>}
                         </div>
                       </div>
                     </div>
-                    {imagePreview && <img src={imagePreview} alt="Preview" className="w-20 h-20 rounded-lg object-cover border border-slate-200" />}
+                    {imagePreview && <div className="w-24 h-24 rounded-2xl overflow-hidden border border-slate-100 shadow-xl"><img src={imagePreview} alt="Preview" className="w-full h-full object-cover" /></div>}
                  </div>
                </div>
 
-               <div className="flex justify-end gap-3 pt-4">
-                 <button onClick={() => setShowProductModal(false)} className="px-6 py-3 rounded-xl font-bold text-slate-500 hover:bg-slate-100">Cancel</button>
-                 <button onClick={handleSaveProduct} disabled={isUploading || isSaving} className="px-6 py-3 rounded-xl font-bold bg-slate-900 text-white hover:bg-slate-800 shadow-lg disabled:opacity-50">{isSaving ? 'Saving...' : 'Save'}</button>
+               <div className="flex gap-4 pt-6">
+                 <button onClick={() => setShowProductModal(false)} className="flex-1 py-4 text-xs font-black uppercase tracking-[0.2em] text-slate-400 hover:text-slate-900 transition-colors">Abort</button>
+                 <button onClick={handleSaveProduct} disabled={isUploading || isSaving} className="flex-[2] py-4 rounded-2xl font-black uppercase tracking-[0.2em] bg-slate-900 text-white shadow-2xl hover:bg-slate-800 disabled:opacity-50 transition-all active:scale-95">{isSaving ? 'Synchronizing...' : 'Save Changes'}</button>
                </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* === CATEGORY MODAL === */}
       {showCategoryModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-end lg:items-center justify-center p-0 lg:p-4">
-          <div className="bg-white rounded-t-3xl lg:rounded-3xl w-full max-w-lg shadow-2xl p-6 lg:p-8">
-            <h2 className="text-2xl font-black text-slate-900 mb-6">{editingCategory ? 'Edit Category' : 'New Category'}</h2>
-            <div className="space-y-4">
-               <div><label className="text-xs font-bold text-slate-500 uppercase">Name (EN)</label><input value={categoryForm.name} onChange={e => setCategoryForm({...categoryForm, name: e.target.value})} className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200" /></div>
-               <div><label className="text-xs font-bold text-slate-500 uppercase">Name (RW)</label><input value={categoryForm.nameRw} onChange={e => setCategoryForm({...categoryForm, nameRw: e.target.value})} className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200" /></div>
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] flex items-end lg:items-center justify-center p-0 lg:p-4">
+          <div className="bg-white rounded-t-[2.5rem] lg:rounded-[2.5rem] w-full max-w-lg shadow-2xl p-6 lg:p-10 border border-slate-100">
+            <h2 className="text-2xl font-black text-slate-900 mb-8 tracking-tighter">{editingCategory ? 'Modify Category' : 'New Department'}</h2>
+            <div className="space-y-5">
+               <div><label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1.5 block">Name (EN)</label><input value={categoryForm.name} onChange={e => setCategoryForm({...categoryForm, name: e.target.value})} className="w-full p-4 bg-slate-50 rounded-2xl border border-slate-200 font-bold outline-none" /></div>
+               <div><label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1.5 block">Name (RW)</label><input value={categoryForm.nameRw} onChange={e => setCategoryForm({...categoryForm, nameRw: e.target.value})} className="w-full p-4 bg-slate-50 rounded-2xl border border-slate-200 font-bold outline-none" /></div>
                <div>
-                 <label className="text-xs font-bold text-slate-500 uppercase">Category Image</label>
-                 <div className="flex gap-2 mt-2">
-                   <div className="relative flex-1">
-                      <input 
-                        type="file" 
-                        accept="image/*" 
-                        disabled={isUploading} 
-                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" 
+                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1.5 block">Category Identity</label>
+                 <div className="flex gap-4 items-center">
+                    <div className="relative flex-1">
+                      <input type="file" accept="image/*" disabled={isUploading} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" 
                         onChange={async (e) => { 
                           const file = e.target.files[0]; 
                           if(!file) return; 
@@ -435,19 +439,19 @@ const AdminDashboard = () => {
                             const url = await uploadToCloudinary(file); 
                             setCategoryForm(prev => ({ ...prev, image: url, icon: '' })); 
                             setImagePreview(url); 
-                          } finally { 
-                            setIsUploading(false); 
-                          } 
+                            toast.success('Media Linked');
+                          } finally { setIsUploading(false); } 
                         }} 
                       />
-                      <div className="w-full p-3 bg-slate-100 rounded-xl text-center text-xs font-bold text-slate-600 border border-slate-200 hover:bg-slate-200 transition">{isUploading ? 'Uploading...' : 'Upload Image'}</div>
-                   </div>
-                   <input value={categoryForm.icon} onChange={e => setCategoryForm({...categoryForm, icon: e.target.value, image: ''})} className="w-20 p-3 bg-slate-50 rounded-xl border border-slate-200 text-center" placeholder="Emoji" />
+                      <div className="w-full p-4 bg-slate-100 rounded-2xl text-center text-[10px] font-black uppercase tracking-widest text-slate-500 border border-slate-200 hover:bg-slate-200 transition-all">{isUploading ? 'Linking...' : 'Media Upload'}</div>
+                    </div>
+                    <span className="text-slate-300 font-bold">OR</span>
+                    <input value={categoryForm.icon} onChange={e => setCategoryForm({...categoryForm, icon: e.target.value, image: ''})} className="w-20 p-4 bg-slate-50 rounded-2xl border border-slate-200 text-center text-xl outline-none" placeholder="🔥" />
                  </div>
                </div>
-               <div className="flex justify-end gap-3 pt-4">
-                 <button onClick={() => setShowCategoryModal(false)} className="px-6 py-3 rounded-xl font-bold text-slate-500 hover:bg-slate-100">Cancel</button>
-                 <button onClick={handleSaveCategory} disabled={isUploading || isSaving} className="px-6 py-3 rounded-xl font-bold bg-slate-900 text-white shadow-lg disabled:opacity-50">{isSaving ? 'Saving...' : 'Save'}</button>
+               <div className="flex gap-4 pt-6">
+                 <button onClick={() => setShowCategoryModal(false)} className="flex-1 py-4 text-xs font-black uppercase tracking-[0.2em] text-slate-400 hover:text-slate-900 transition-colors">Discard</button>
+                 <button onClick={handleSaveCategory} disabled={isUploading || isSaving} className="flex-[2] py-4 rounded-2xl font-black uppercase tracking-[0.2em] bg-slate-900 text-white shadow-2xl hover:bg-slate-800 disabled:opacity-50 transition-all active:scale-95">{isSaving ? 'Updating...' : 'Commit'}</button>
                </div>
             </div>
           </div>

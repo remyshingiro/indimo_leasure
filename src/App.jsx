@@ -1,5 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom'
 import { useEffect, Suspense, lazy } from 'react'
+import { Toaster } from 'react-hot-toast'
+import { HelmetProvider } from 'react-helmet-async' // 🚀 1. ADDED: Import the provider
 import ErrorBoundary from './components/ErrorBoundary'
 import Header from './components/Header'
 import Footer from './components/Footer'
@@ -7,7 +9,6 @@ import WhatsAppButton from './components/WhatsAppButton'
 import useAnalyticsStore from './stores/analyticsStore'
 import useAuthStore from './stores/authStore'
 import useProductStore from './stores/productStore' 
-// 🚀 ADDED: We need the category store to fetch categories globally!
 import useCategoryStore from './stores/categoryStore' 
 import { getSessionId } from './utils/analytics'
 import ProtectedRoute from './components/ProtectedRoute'
@@ -29,19 +30,14 @@ const SignIn = lazy(() => import('./pages/SignIn'))
 const Profile = lazy(() => import('./pages/Profile'))
 const AdminDashboard = lazy(() => import('./pages/admin/Dashboard'))
 
-// 🚀 ADDED: ScrollToTop Component
-// This forces the window to snap to the top every time the route changes
 const ScrollToTop = () => {
   const { pathname } = useLocation()
-
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
   }, [pathname])
-
   return null
 }
 
-// Loading component
 const LoadingFallback = () => (
   <div className="min-h-screen flex items-center justify-center">
     <div className="text-center">
@@ -51,7 +47,6 @@ const LoadingFallback = () => (
   </div>
 )
 
-// Analytics Component
 const AnalyticsTracker = () => {
   const location = useLocation()
   const trackPageView = useAnalyticsStore((state) => state.trackPageView)
@@ -68,13 +63,9 @@ const AnalyticsTracker = () => {
   return null
 }
 
-// Reduced Top Spacing
 const MainLayout = ({ children }) => {
   const location = useLocation()
-  // If we are on the home page, no top padding (so the hero image can touch the top)
-  // If we are on any other page, use a smaller padding just to clear the navbar height
   const isHome = location.pathname === '/'
-
   return (
     <main 
       className={`flex-grow ${isHome ? '' : 'pt-16 lg:pt-20'}`} 
@@ -90,73 +81,86 @@ function App() {
   const sessionId = getSessionId()
   
   const fetchProducts = useProductStore((state) => state.fetchProducts)
-  // 🚀 ADDED: Bring in the fetchCategories function
   const fetchCategories = useCategoryStore((state) => state.fetchCategories)
   const initializeAuth = useAuthStore((state) => state.initializeAuth)
 
   useEffect(() => {
-    // Start session tracking
     startSession(sessionId)
-
-    // 🚀 ADDED: Load BOTH products and categories from Firebase instantly
     fetchProducts()
     fetchCategories() 
 
-    // Start listening for Login Status
     const unsubscribe = initializeAuth()
     
-    // Cleanup listener when app closes
     return () => {
       if (typeof unsubscribe === 'function') unsubscribe()
     }
   }, [startSession, sessionId, fetchProducts, fetchCategories, initializeAuth])
 
   return (
-    <Router>
-      {/* The ScrollToTop component sits right inside the Router! */}
-      <ScrollToTop />
-      
-      <ErrorBoundary>
-        <div className="flex flex-col min-h-screen bg-slate-50">
-          <AnalyticsTracker />
-          <Header />
-          
-          <MainLayout>
-            <Suspense fallback={<LoadingFallback />}>
-              <Routes>
-                <Route path="/" element={<Home />} />
-                <Route path="/products" element={<Products />} />
-                <Route path="/products/:slug" element={<ProductDetail />} />
-                <Route path="/cart" element={<Cart />} />
-                <Route path="/checkout" element={<Checkout />} />
-                <Route path="/about" element={<About />} />
-                <Route path="/contact" element={<Contact />} />
-                <Route path="/faq" element={<FAQ />} />
-                <Route path="/policies/returns" element={<ReturnPolicy />} />
-                <Route path="/policies/privacy" element={<PrivacyPolicy />} />
-                <Route path="/policies/terms" element={<Terms />} />
-                <Route path="/signup" element={<SignUp />} />
-                <Route path="/login" element={<SignIn />} />
-                <Route path="/profile" element={<Profile />} />
-                <Route path="/wishlist" element={<div className="container mx-auto px-4 py-12 text-center"><h1 className="text-2xl font-bold">Wishlist Coming Soon</h1></div>} />
-                
-                {/* 🔒 Admin Door is Locked! */}
-                <Route path="/admin" element={
-                  <ProtectedRoute requireAdmin={true}>
-                    <AdminDashboard />
-                  </ProtectedRoute>
-                } />
-                
-              </Routes>
-            </Suspense>
-          </MainLayout>
-          
-          <Footer />
-          <WhatsAppButton />
-        </div>
-      </ErrorBoundary>
-    </Router>
+    <HelmetProvider> {/* 🚀 2. WRAPPED: Entire app for SEO support */}
+      <Router>
+        <ScrollToTop />
+        
+        <Toaster 
+          position="bottom-center"
+          toastOptions={{
+            duration: 3000,
+            style: {
+              background: '#0f172a',
+              color: '#fff',
+              borderRadius: '1rem',
+              padding: '12px 24px',
+              fontWeight: 'bold',
+              fontSize: '14px',
+            },
+            success: {
+              iconTheme: {
+                primary: '#0ea5e9',
+                secondary: '#fff',
+              },
+            },
+          }} 
+        />
+
+        <ErrorBoundary>
+          <div className="flex flex-col min-h-screen bg-slate-50">
+            <AnalyticsTracker />
+            <Header />
+            
+            <MainLayout>
+              <Suspense fallback={<LoadingFallback />}>
+                <Routes>
+                  <Route path="/" element={<Home />} />
+                  <Route path="/products" element={<Products />} />
+                  <Route path="/products/:slug" element={<ProductDetail />} />
+                  <Route path="/cart" element={<Cart />} />
+                  <Route path="/checkout" element={<Checkout />} />
+                  <Route path="/about" element={<About />} />
+                  <Route path="/contact" element={<Contact />} />
+                  <Route path="/faq" element={<FAQ />} />
+                  <Route path="/policies/returns" element={<ReturnPolicy />} />
+                  <Route path="/policies/privacy" element={<PrivacyPolicy />} />
+                  <Route path="/policies/terms" element={<Terms />} />
+                  <Route path="/signup" element={<SignUp />} />
+                  <Route path="/login" element={<SignIn />} />
+                  <Route path="/profile" element={<Profile />} />
+                  <Route path="/wishlist" element={<div className="container mx-auto px-4 py-12 text-center"><h1 className="text-2xl font-bold">Wishlist Coming Soon</h1></div>} />
+                  <Route path="/admin" element={
+                    <ProtectedRoute requireAdmin={true}>
+                      <AdminDashboard />
+                    </ProtectedRoute>
+                  } />
+                </Routes>
+              </Suspense>
+            </MainLayout>
+            
+            <Footer />
+            <WhatsAppButton />
+          </div>
+        </ErrorBoundary>
+      </Router>
+    </HelmetProvider>
   )
 }
 
-export default App 
+export default App

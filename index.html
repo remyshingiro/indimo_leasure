@@ -2,30 +2,40 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    
     <link rel="icon" type="image/png" href="/logo.png" />
-    
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Your trusted swimming equipment store in Kigali, Rwanda. Quality swimming gear for serious swimmers, families, and clubs." />
-    <meta name="theme-color" content="#0079e6" />
+    
+    <title>Kigali Swim Shop | #1 Swimming Equipment in Rwanda</title>
+    <meta name="title" content="Kigali Swim Shop | Professional Swimming Gear in Rwanda" />
+    <meta name="description" content="Rwanda's leading store for professional swimming gear. Shop high-quality goggles, fins, swimsuits, and accessories with fast delivery in Kigali." />
+    <meta name="keywords" content="swimming goggles Kigali, swim shop Rwanda, swimming equipment Kigali, Kigali Swim Shop, swimsuits Kigali" />
+    <meta name="theme-color" content="#0f172a" />
     <link rel="manifest" href="/manifest.json" />
-    <title>Kigali Swim Shop - Swimming Equipment in Kigali, Rwanda</title>
+
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://swimshop.online/" />
+    <meta property="og:title" content="Kigali Swim Shop | Premium Gear for All Swimmers" />
+    <meta property="og:description" content="Quality swimming gear for serious swimmers, families, and clubs in Kigali. Fast delivery guaranteed." />
+    <meta property="og:image" content="https://swimshop.online/og-image.jpg" />
+
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="https://swimshop.online/" />
+    <meta property="twitter:title" content="Kigali Swim Shop | Professional Swimming Gear" />
+    <meta property="twitter:description" content="Equip yourself with Rwanda's #1 performance swimming gear." />
+    <meta property="twitter:image" content="https://swimshop.online/og-image.jpg" />
 
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-KWCSDY3LQM"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
-
       gtag('config', 'G-KWCSDY3LQM');
     </script>
-    
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
     <script>
-      // Register Service Worker
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
           navigator.serviceWorker.register('/sw.js')

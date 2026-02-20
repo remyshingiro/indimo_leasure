@@ -1,13 +1,16 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
+import { toast } from 'react-hot-toast'
 import useCartStore from '../stores/cartStore'
 import useLanguageStore from '../stores/languageStore'
 import useAuthStore from '../stores/authStore'
 import useOrderStore from '../stores/orderStore'
-import useProductStore from '../stores/productStore' // 👈 Added Product Store
+import useProductStore from '../stores/productStore'
 import { formatRWF, formatRWFSimple } from '../utils/currency'
 import { DELIVERY_ZONES, getDeliveryFee } from '../utils/delivery'
+import { sendOrderToWhatsApp } from '../utils/whatsapp'
+import { CALL_PHONE } from '../utils/constants' // 🚀 Centralized Contact Import
 import LazyImage from '../components/LazyImage'
 
 const Checkout = () => {
@@ -20,7 +23,7 @@ const Checkout = () => {
   const user = useAuthStore((state) => state.user)
   
   const createOrder = useOrderStore((state) => state.createOrder)
-  const updateStock = useProductStore((state) => state.updateStock) // 👈 Added Stock updater
+  const updateStock = useProductStore((state) => state.updateStock)
   
   const [selectedZone, setSelectedZone] = useState('gasabo')
   const [paymentMethod, setPaymentMethod] = useState('mtn')
@@ -28,6 +31,7 @@ const Checkout = () => {
   const [transactionId, setTransactionId] = useState('')
   const [orderPlaced, setOrderPlaced] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [lastOrder, setLastOrder] = useState(null) 
 
   const { register, handleSubmit, formState: { errors } } = useForm()
 
@@ -50,6 +54,10 @@ const Checkout = () => {
       handleOrderPlacement(data)
     } else {
       setShowPaymentInstructions(true)
+      toast(
+        language === 'en' ? 'Almost there! Please follow payment steps.' : 'Hasigaye gato! Kurikiza amabwiriza yo kwishyura.',
+        { icon: '💳' }
+      )
       setTimeout(() => {
         document.getElementById('payment-instructions')?.scrollIntoView({ behavior: 'smooth' })
       }, 100)
@@ -87,22 +95,33 @@ const Checkout = () => {
       total: Number(finalTotal) || 0,
       paymentMethod: paymentMethod || 'cod',
       transactionId: paymentMethod !== 'cod' ? (transactionId || 'none') : 'none',
+      createdAt: new Date().toISOString()
     }
 
     try {
-      // 1. Save the order to Firebase
       await createOrder(orderPayload)
-
-      // 📉 2. Automatically deduct inventory!
       await updateStock(items)
-
-      // 3. Clear the cart & show success
+      
+      setLastOrder(orderPayload)
       clearCart()
       setOrderPlaced(true)
       window.scrollTo(0, 0)
+
+      toast.success(
+        language === 'en' ? 'Order Secured!' : 'Itegeko ryohererejwe!',
+        { id: 'checkout-success' }
+      )
+
+      setTimeout(() => {
+        sendOrderToWhatsApp(orderPayload)
+      }, 2000)
+
     } catch (error) {
       console.error("Order Save Error:", error)
-      alert(language === 'en' ? "Failed to save order. Please try again." : "Habaye ikibazo. Ongera ugerageze.")
+      toast.error(
+        language === 'en' ? "Failed to save order." : "Habaye ikibazo.",
+        { id: 'checkout-error' }
+      )
     } finally {
       setIsSubmitting(false)
     }
@@ -110,7 +129,7 @@ const Checkout = () => {
 
   const handlePaymentConfirmation = () => {
     if (!transactionId.trim()) {
-      alert(language === 'en' ? 'Please enter transaction ID' : 'Andika numero y\'itegeko')
+      toast.error(language === 'en' ? 'Please enter transaction ID' : "Andika numero y'itegeko")
       return
     }
     const form = document.getElementById('checkout-form')
@@ -129,33 +148,59 @@ const Checkout = () => {
 
   if (orderPlaced) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4 py-12">
-        <div className="max-w-md w-full bg-white rounded-3xl shadow-xl p-8 text-center">
-          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <span className="text-4xl">✅</span>
+      <div className="min-h-[80vh] bg-slate-50 flex items-center justify-center px-4 text-slate-900">
+        <div className="max-w-md w-full bg-white rounded-[2.5rem] shadow-xl p-8 text-center border border-slate-100">
+          <div className="w-20 h-20 bg-green-50 text-green-500 rounded-full flex items-center justify-center mx-auto mb-6 text-4xl shadow-inner animate-bounce-short">
+            ✓
           </div>
-          <h2 className="text-3xl font-black text-slate-900 mb-4">
-            {language === 'en' ? 'Order Confirmed!' : 'Itegeko Ryashyizweho!'}
+          <h2 className="text-3xl font-black mb-2 tracking-tight">
+            {language === 'en' ? 'Order Received!' : 'Itegeko Ryakiriwe!'}
           </h2>
-          <p className="text-slate-500 mb-8 leading-relaxed">
+          <p className="text-slate-500 mb-8 leading-relaxed font-medium">
             {language === 'en'
-              ? 'Thank you for shopping with us. We will contact you shortly to confirm your delivery.'
-              : 'Murakoze ku tegeko! Tuzabagana vuba kugira ngo duhamagare amakuru y\'ubwoba.'
+              ? "We've saved your order. You can speed up delivery by calling us or using WhatsApp below."
+              : "Twageze ku itegeko ryawe. Hamagara cyangwa utwandikire kuri WhatsApp hano munsi dusoze vuba."
             }
           </p>
+
+          <div className="bg-slate-50 rounded-2xl p-5 mb-8 border border-dashed border-slate-200">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Receipt Reference</p>
+            <p className="text-lg font-mono font-bold text-slate-700">#KS-{Math.floor(1000 + Math.random() * 9000)}</p>
+          </div>
+
           <div className="space-y-3">
-            <Link
-              to="/profile"
-              className="block w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-4 rounded-xl transition shadow-lg"
+            {/* 🚀 New: Direct Phone Call Logic */}
+            <a
+              href={`tel:${CALL_PHONE}`}
+              className="block w-full bg-sky-600 hover:bg-sky-700 text-white font-black py-4 rounded-xl transition shadow-lg shadow-sky-100 flex items-center justify-center gap-2 active:scale-95"
             >
-              {language === 'en' ? 'View My Orders' : 'Reba Ibyo Watumije'}
-            </Link>
-            <Link
-              to="/products"
-              className="block w-full bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold py-4 rounded-xl transition"
+              <span className="text-xl">📞</span> 
+              {language === 'en' ? 'Call to Confirm' : 'Hamagara ubu'}
+            </a>
+
+            {/* WhatsApp Fallback */}
+            <button
+              onClick={() => sendOrderToWhatsApp(lastOrder)}
+              className="block w-full bg-[#25D366] hover:bg-[#128C7E] text-white font-black py-4 rounded-xl transition shadow-lg shadow-green-100 flex items-center justify-center gap-2 active:scale-95"
             >
-              {language === 'en' ? 'Continue Shopping' : 'Komeza Gucuruza'}
-            </Link>
+              <span className="text-xl">💬</span> 
+              {language === 'en' ? 'Chat on WhatsApp' : 'Tuvugishe kuri WhatsApp'}
+            </button>
+
+            <div className="pt-4 flex flex-col gap-2">
+                <Link
+                to="/profile"
+                className="text-slate-900 font-black text-sm underline decoration-slate-200 underline-offset-4 hover:decoration-sky-500 transition-all"
+                >
+                {language === 'en' ? 'View My Orders' : 'Reba Ibyo Watumije'}
+                </Link>
+                <Link
+                to="/"
+                className="text-slate-400 font-bold text-xs hover:text-sky-600 transition-colors"
+                >
+                {language === 'en' ? 'Back to Home' : 'Subira Ahabanza'}
+                </Link>
+            </div>
           </div>
         </div>
       </div>
@@ -163,62 +208,56 @@ const Checkout = () => {
   }
 
   return (
-    <div className="bg-slate-50 min-h-screen py-32 lg:py-40 px-4">
+    <div className="bg-slate-50 min-h-screen pt-4 pb-20 px-4">
       <div className="container mx-auto max-w-6xl">
-        
-        {/* Header */}
-        <div className="flex items-center justify-center mb-8 lg:mb-12">
-           <div className="flex items-center gap-2 text-sm font-bold text-slate-400 uppercase tracking-widest">
+        <div className="flex items-center justify-center mb-6 lg:mb-8">
+           <div className="flex items-center gap-3 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] bg-white px-6 py-2.5 rounded-full shadow-sm border border-slate-100">
              <Link to="/cart" className="hover:text-sky-600 transition">Cart</Link>
-             <span className="text-slate-300">/</span>
+             <span className="text-slate-200">/</span>
              <span className="text-slate-900">Checkout</span>
-             <span className="text-slate-300">/</span>
-             <span>Finish</span>
+             <span className="text-slate-200">/</span>
+             <span className="text-slate-200">Finish</span>
            </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          
-          {/* === LEFT COLUMN: FORMS (Span 7) === */}
-          <div className="lg:col-span-7 space-y-8">
-            <form id="checkout-form" onSubmit={handleSubmit(onSubmit)} className="space-y-8">
-              
-              {/* 1. Contact Info */}
-              <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 lg:p-8">
-                <h2 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
-                  <span className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center text-sm">1</span>
-                  {language === 'en' ? 'Contact Information' : 'Amakuru y\'Umukiriya'}
+          <div className="lg:col-span-7 space-y-6">
+            <form id="checkout-form" onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+              <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 lg:p-8">
+                <h2 className="text-xl font-black text-slate-900 mb-6 flex items-center gap-3">
+                  <span className="w-8 h-8 rounded-full bg-sky-500 text-white flex items-center justify-center text-xs shadow-md shadow-sky-200">1</span>
+                  {language === 'en' ? 'Contact Information' : "Amakuru y'Umukiriya"}
                 </h2>
                 
-                <div className="grid grid-cols-1 gap-6">
+                <div className="grid grid-cols-1 gap-5">
                   <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-2">
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">
                       {language === 'en' ? 'Full Name' : 'Amazina Yose'}
                     </label>
                     <input
                       {...register('fullName', { required: true })}
                       defaultValue={user?.name || ''}
-                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500 transition"
-                      placeholder="John Doe"
+                      className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-4 focus:ring-sky-500/10 focus:border-sky-500 transition-all font-medium"
+                      placeholder="e.g. John Doe"
                     />
-                    {errors.fullName && <p className="text-red-500 text-xs mt-1">Required</p>}
+                    {errors.fullName && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1 uppercase tracking-wider">Required</p>}
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                       <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-2">
-                          {language === 'en' ? 'Phone Number' : 'Numero y\'Telefoni'}
+                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">
+                          {language === 'en' ? 'Phone Number' : "Numero y'Telefoni"}
                         </label>
                         <input
                           {...register('phone', { required: true })}
                           defaultValue={user?.phone || ''}
                           placeholder="+250 788 123 456"
-                          className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500 transition"
+                          className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-4 focus:ring-sky-500/10 focus:border-sky-500 transition-all font-medium"
                         />
-                        {errors.phone && <p className="text-red-500 text-xs mt-1">Required</p>}
+                        {errors.phone && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1 uppercase tracking-wider">Required</p>}
                       </div>
                       <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-2">
+                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">
                           {language === 'en' ? 'Email (Optional)' : 'Imeyili'}
                         </label>
                         <input
@@ -226,29 +265,28 @@ const Checkout = () => {
                           defaultValue={user?.email || ''}
                           type="email"
                           placeholder="john@example.com"
-                          className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500 transition"
+                          className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-4 focus:ring-sky-500/10 focus:border-sky-500 transition-all font-medium"
                         />
                       </div>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-2">
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">
                       {language === 'en' ? 'Delivery Address' : 'Aderesi'}
                     </label>
                     <input
                       {...register('address', { required: true })}
-                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500 transition"
+                      className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-4 focus:ring-sky-500/10 focus:border-sky-500 transition-all font-medium"
                       placeholder="Street, House Number, Landmark"
                     />
-                    {errors.address && <p className="text-red-500 text-xs mt-1">Required</p>}
+                    {errors.address && <p className="text-red-500 text-[10px] font-bold mt-1 ml-1 uppercase tracking-wider">Required</p>}
                   </div>
                 </div>
               </div>
 
-              {/* 2. Delivery Zone */}
-              <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 lg:p-8">
-                <h2 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
-                  <span className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center text-sm">2</span>
+              <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 lg:p-8">
+                <h2 className="text-xl font-black text-slate-900 mb-6 flex items-center gap-3">
+                  <span className="w-8 h-8 rounded-full bg-sky-500 text-white flex items-center justify-center text-xs shadow-md shadow-sky-200">2</span>
                   {language === 'en' ? 'Select Zone' : 'Hitamo Akarere'}
                 </h2>
                 
@@ -258,16 +296,16 @@ const Checkout = () => {
                       key={key}
                       type="button"
                       onClick={() => setSelectedZone(key)}
-                      className={`p-4 rounded-xl border-2 text-left transition-all duration-200 ${
+                      className={`p-4 rounded-2xl border-2 text-left transition-all duration-200 ${
                         selectedZone === key
-                          ? 'border-sky-500 bg-sky-50 shadow-md transform -translate-y-1'
-                          : 'border-slate-100 hover:border-slate-300'
+                          ? 'border-sky-500 bg-sky-50/50 shadow-md transform -translate-y-1'
+                          : 'border-slate-50 hover:border-slate-200 bg-slate-50/30'
                       }`}
                     >
-                      <div className={`font-bold mb-1 ${selectedZone === key ? 'text-sky-700' : 'text-slate-700'}`}>
+                      <div className={`font-black text-sm mb-1 ${selectedZone === key ? 'text-sky-600' : 'text-slate-700'}`}>
                         {language === 'en' ? zone.name : zone.nameRw}
                       </div>
-                      <div className="text-xs text-slate-500">
+                      <div className="text-[10px] font-bold text-slate-400 uppercase">
                         {formatRWFSimple(zone.fee)}
                       </div>
                     </button>
@@ -275,10 +313,9 @@ const Checkout = () => {
                 </div>
               </div>
 
-              {/* 3. Payment Method */}
-              <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 lg:p-8">
-                <h2 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
-                  <span className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center text-sm">3</span>
+              <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 lg:p-8">
+                <h2 className="text-xl font-black text-slate-900 mb-6 flex items-center gap-3">
+                  <span className="w-8 h-8 rounded-full bg-sky-500 text-white flex items-center justify-center text-xs shadow-md shadow-sky-200">3</span>
                   {language === 'en' ? 'Payment Method' : 'Uburyo bwo Kwishyura'}
                 </h2>
 
@@ -291,10 +328,10 @@ const Checkout = () => {
                   ].map((method) => (
                     <label 
                       key={method.id}
-                      className={`relative flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 ${
+                      className={`relative flex items-center gap-4 p-4 rounded-2xl border-2 cursor-pointer transition-all duration-200 ${
                         paymentMethod === method.id 
-                        ? 'border-sky-500 bg-sky-50 ring-1 ring-sky-500' 
-                        : 'border-slate-100 hover:border-slate-300'
+                        ? 'border-sky-500 bg-sky-50/50 ring-4 ring-sky-500/10' 
+                        : 'border-slate-50 hover:border-slate-200 bg-slate-50/30'
                       }`}
                     >
                       <input 
@@ -305,31 +342,25 @@ const Checkout = () => {
                         onChange={(e) => setPaymentMethod(e.target.value)}
                         className="sr-only"
                       />
-                      <div className={`w-12 h-12 rounded-full flex items-center justify-center text-2xl ${
-                        paymentMethod === method.id ? 'bg-white' : 'bg-slate-100'
+                      <div className={`w-12 h-12 rounded-full flex items-center justify-center text-2xl shadow-inner ${
+                        paymentMethod === method.id ? 'bg-white text-sky-500' : 'bg-white text-slate-300 border border-slate-100'
                       }`}>
                         {method.icon}
                       </div>
                       <div>
-                        <div className="font-bold text-slate-900">{method.name}</div>
-                        <div className="text-xs text-slate-500">{method.desc}</div>
+                        <div className="font-black text-slate-900 text-sm">{method.name}</div>
+                        <div className="text-[10px] font-bold text-slate-400 uppercase mt-0.5">{method.desc}</div>
                       </div>
-                      {paymentMethod === method.id && (
-                        <div className="absolute top-4 right-4 text-sky-600">
-                          <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
-                        </div>
-                      )}
                     </label>
                   ))}
                 </div>
               </div>
 
-              {/* Submit Button */}
               {!showPaymentInstructions && (
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-5 rounded-xl text-lg shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-black py-5 rounded-2xl text-lg shadow-xl shadow-sky-200 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 disabled:opacity-50 border border-sky-400/20 active:scale-95"
                 >
                   {isSubmitting 
                     ? (language === 'en' ? 'Processing...' : 'Biri Gukorwa...') 
@@ -339,64 +370,61 @@ const Checkout = () => {
               )}
             </form>
 
-            {/* 4. Payment Instructions */}
             {showPaymentInstructions && paymentMethod !== 'cod' && (
-              <div id="payment-instructions" className="bg-slate-900 text-white rounded-2xl shadow-xl p-8 animate-fade-in-up">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-xl font-bold flex items-center gap-2">
-                    🔒 {language === 'en' ? 'Secure Payment' : 'Kwishyura Bwite'}
+              <div id="payment-instructions" className="bg-slate-900 text-white rounded-[2rem] shadow-2xl p-8 animate-fade-in-up border border-slate-800">
+                <div className="flex items-center justify-between mb-8 border-b border-slate-800 pb-6">
+                  <h2 className="text-xl font-black flex items-center gap-2">
+                    <span className="text-sky-400">🔒</span> {language === 'en' ? 'Secure Payment' : 'Kwishyura Bwite'}
                   </h2>
                   <div className="text-right">
-                    <p className="text-slate-400 text-xs uppercase tracking-wider">Total to Pay</p>
-                    <p className="text-2xl font-bold text-sky-400">{formatRWFSimple(finalTotal)}</p>
+                    <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1">Total to Pay</p>
+                    <p className="text-3xl font-black text-sky-400">{formatRWFSimple(finalTotal)}</p>
                   </div>
                 </div>
 
                 <div className="space-y-6">
-                  {/* MTN Instructions */}
-                  {paymentMethod === 'mtn' && (
-                    <div className="bg-slate-800/50 p-6 rounded-xl border border-slate-700 space-y-4">
+                  {(paymentMethod === 'mtn' || paymentMethod === 'airtel') && (
+                    <div className="bg-slate-800/40 p-6 rounded-2xl border border-slate-800 space-y-5">
                       <div className="flex gap-4">
-                        <div className="w-8 h-8 rounded-full bg-sky-500 flex-shrink-0 flex items-center justify-center font-bold">1</div>
+                        <div className="w-8 h-8 rounded-full bg-sky-500 text-slate-900 flex-shrink-0 flex items-center justify-center font-black text-sm">1</div>
                         <div>
-                          <p className="font-bold">Dial *182#</p>
-                          <p className="text-slate-400 text-sm">On your phone</p>
+                          <p className="font-bold text-slate-100">Dial *182#</p>
+                          <p className="text-slate-500 text-xs mt-1">Open the dialer on your phone</p>
                         </div>
                       </div>
                       <div className="flex gap-4">
-                        <div className="w-8 h-8 rounded-full bg-sky-500 flex-shrink-0 flex items-center justify-center font-bold">2</div>
+                        <div className="w-8 h-8 rounded-full bg-sky-500 text-slate-900 flex-shrink-0 flex items-center justify-center font-black text-sm">2</div>
                         <div>
-                           <p className="font-bold">Enter Merchant Code: <span className="text-sky-400 font-mono text-lg">123456</span></p>
+                           <p className="font-bold text-slate-100">Enter Merchant Code: <span className="text-sky-400 font-mono text-xl ml-2">123456</span></p>
                         </div>
                       </div>
                       <div className="flex gap-4">
-                        <div className="w-8 h-8 rounded-full bg-sky-500 flex-shrink-0 flex items-center justify-center font-bold">3</div>
+                        <div className="w-8 h-8 rounded-full bg-sky-500 text-slate-900 flex-shrink-0 flex items-center justify-center font-black text-sm">3</div>
                         <div>
-                           <p className="font-bold">Enter Amount: <span className="text-white font-mono">{formatRWFSimple(finalTotal)}</span></p>
+                           <p className="font-bold text-slate-100">Enter Amount: <span className="text-white font-mono ml-2">{formatRWFSimple(finalTotal)}</span></p>
                         </div>
                       </div>
                     </div>
                   )}
                   
-                  {/* Transaction ID Input */}
-                  <div className="pt-4">
-                    <label className="block text-sm font-bold text-slate-300 mb-2">
-                       {language === 'en' ? 'Enter Transaction ID / Reference' : 'Andika Numero y\'Itegeko'}
+                  <div className="pt-2">
+                    <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3 ml-1">
+                       {language === 'en' ? 'Enter Transaction ID / Reference' : "Andika Numero y'Itegeko"}
                     </label>
                     <input
                       type="text"
                       value={transactionId}
                       onChange={(e) => setTransactionId(e.target.value)}
-                      placeholder="e.g., 8923412"
-                      className="w-full px-4 py-4 bg-slate-800 border border-slate-600 rounded-xl focus:outline-none focus:border-sky-500 text-white placeholder-slate-500 font-mono text-lg tracking-widest"
+                      placeholder="e.g. 8923412"
+                      className="w-full px-5 py-5 bg-slate-800/50 border border-slate-700 rounded-2xl focus:outline-none focus:border-sky-500 text-white placeholder-slate-600 font-mono text-xl tracking-[0.2em] shadow-inner transition-all"
                     />
                   </div>
 
-                  <div className="flex gap-4 pt-4">
+                  <div className="flex flex-col sm:flex-row gap-4 pt-6">
                     <button
                       onClick={handlePaymentConfirmation}
                       disabled={isSubmitting}
-                      className="flex-1 bg-sky-500 hover:bg-sky-400 text-white font-bold py-4 rounded-xl shadow-lg transition disabled:opacity-50"
+                      className="flex-1 bg-gradient-to-r from-sky-400 to-sky-600 hover:from-sky-300 hover:to-sky-500 text-slate-900 font-black py-5 rounded-2xl shadow-xl shadow-sky-500/10 transition-all disabled:opacity-50 text-lg active:scale-95"
                     >
                       {isSubmitting 
                         ? (language === 'en' ? 'Processing...' : 'Biri Gukorwa...') 
@@ -406,7 +434,7 @@ const Checkout = () => {
                     <button
                       onClick={() => setShowPaymentInstructions(false)}
                       disabled={isSubmitting}
-                      className="px-6 py-4 border border-slate-600 text-slate-300 rounded-xl hover:bg-slate-800 transition disabled:opacity-50"
+                      className="px-8 py-5 border border-slate-700 text-slate-400 font-bold rounded-2xl hover:bg-slate-800 hover:text-white transition-all disabled:opacity-50"
                     >
                       {language === 'en' ? 'Cancel' : 'Hagarika'}
                     </button>
@@ -416,56 +444,55 @@ const Checkout = () => {
             )}
           </div>
 
-          {/* === RIGHT COLUMN: STICKY RECEIPT (Span 5) === */}
           <div className="lg:col-span-5">
-            <div className="bg-white rounded-2xl shadow-lg border border-slate-100 p-6 lg:p-8 sticky top-24">
-              <h2 className="text-lg font-bold text-slate-900 mb-6 pb-4 border-b border-slate-100">
+            <div className="bg-white rounded-[2rem] shadow-xl border border-slate-100 p-6 lg:p-8 sticky top-28">
+              <h2 className="text-xl font-black text-slate-900 mb-6 pb-4 border-b border-slate-100 flex justify-between items-center">
                 {language === 'en' ? 'Order Summary' : 'Incamake'}
+                <span className="text-[10px] font-black text-slate-400 bg-slate-50 px-3 py-1.5 rounded-full uppercase tracking-wider">{items.length} Items</span>
               </h2>
 
-              <div className="space-y-4 mb-6 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
+              <div className="space-y-5 mb-8 max-h-[40vh] overflow-y-auto pr-2 custom-scrollbar">
                 {items.map((item) => (
-                  <div key={`${item.id}-${item.selectedSize}`} className="flex gap-4">
-                    <div className="w-16 h-16 bg-slate-100 rounded-lg overflow-hidden flex-shrink-0 border border-slate-200">
-                       <LazyImage src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                  <div key={`${item.id}-${item.selectedSize}`} className="flex gap-4 group">
+                    <div className="w-16 h-16 bg-slate-50 rounded-2xl overflow-hidden flex-shrink-0 border border-slate-100 group-hover:border-sky-200 transition-colors">
+                       <LazyImage src={item.image} alt={item.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                     </div>
-                    <div className="flex-1">
-                       <p className="text-sm font-bold text-slate-900 line-clamp-2">{language === 'en' ? item.name : item.nameRw}</p>
-                       <p className="text-xs text-slate-500 mt-1">Qty: {item.quantity}</p>
+                    <div className="flex-1 min-w-0">
+                       <p className="text-sm font-black text-slate-800 line-clamp-1 group-hover:text-sky-600 transition-colors uppercase tracking-tight">{language === 'en' ? item.name : item.nameRw}</p>
+                       <p className="text-[10px] font-black text-slate-400 mt-1 uppercase tracking-tighter">Qty: {item.quantity} {item.selectedSize && `• Size: ${item.selectedSize}`}</p>
                     </div>
-                    <div className="text-sm font-bold text-slate-900">
+                    <div className="text-sm font-black text-slate-900 whitespace-nowrap">
                        {formatRWFSimple(item.price * item.quantity)}
                     </div>
                   </div>
                 ))}
               </div>
 
-              <div className="space-y-3 py-4 border-t border-slate-100">
-                <div className="flex justify-between text-slate-600 text-sm">
+              <div className="space-y-3 py-6 border-t border-slate-100">
+                <div className="flex justify-between text-slate-400 text-[10px] font-black uppercase tracking-widest">
                   <span>Subtotal</span>
-                  <span>{formatRWF(subtotal)}</span>
+                  <span className="text-slate-900 text-sm">{formatRWF(subtotal)}</span>
                 </div>
-                <div className="flex justify-between text-slate-600 text-sm">
+                <div className="flex justify-between text-slate-400 text-[10px] font-black uppercase tracking-widest">
                   <span>Delivery ({selectedZone})</span>
-                  <span>{formatRWF(deliveryFee)}</span>
+                  <span className="text-slate-900 text-sm">{formatRWF(deliveryFee)}</span>
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-dashed border-slate-300">
+              <div className="pt-6 border-t border-dashed border-slate-200 bg-slate-50 -mx-6 lg:-mx-8 px-6 lg:px-8 pb-4 rounded-b-[2rem]">
                 <div className="flex justify-between items-end">
-                  <span className="font-bold text-slate-900">Total</span>
-                  <span className="text-3xl font-black text-slate-900 tracking-tight">{formatRWF(finalTotal)}</span>
+                  <span className="font-black text-slate-900 uppercase tracking-[0.2em] text-[10px] mb-2">Total Amount</span>
+                  <span className="text-4xl font-black text-sky-600 tracking-tighter">{formatRWF(finalTotal)}</span>
                 </div>
-              </div>
-              
-              <div className="mt-6 bg-slate-50 p-4 rounded-xl text-center">
-                  <p className="text-xs text-slate-400 flex items-center justify-center gap-2">
-                    🔒 SSL Secured Checkout
-                  </p>
+                
+                <div className="mt-8 flex flex-col items-center gap-4">
+                  <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest bg-white px-5 py-2.5 rounded-full shadow-sm border border-slate-100">
+                    <span className="text-sky-500 text-sm">🔒</span> SSL Secured
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-
         </div>
       </div>
     </div>
