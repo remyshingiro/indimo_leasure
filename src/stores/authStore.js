@@ -4,7 +4,8 @@ import {
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
   signOut, 
-  onAuthStateChanged 
+  onAuthStateChanged,
+  sendPasswordResetEmail // 🚀 ADDED: The Firebase reset function
 } from 'firebase/auth'
 import { doc, setDoc, getDoc } from 'firebase/firestore'
 
@@ -126,6 +127,24 @@ const useAuthStore = create((set) => ({
       set({ user: null, isAdmin: false });
     } catch (err) {
       console.error(err);
+    }
+  },
+
+  // 🚀 5. NEW: FORGOT PASSWORD FUNCTION
+  resetPassword: async (email) => {
+    set({ isLoading: true, error: null });
+    try {
+      await sendPasswordResetEmail(auth, email);
+      set({ isLoading: false });
+      return true;
+    } catch (err) {
+      console.error("Password reset error:", err);
+      let errorMessage = "Failed to send reset email.";
+      if (err.code === 'auth/user-not-found') errorMessage = "No account found with this email.";
+      if (err.code === 'auth/invalid-email') errorMessage = "Please enter a valid email address.";
+      
+      set({ error: errorMessage, isLoading: false });
+      throw new Error(errorMessage);
     }
   }
 }))

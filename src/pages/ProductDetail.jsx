@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react' // 🚀 Added useMemo
 import { useParams, Link } from 'react-router-dom'
 import useCartStore from '../stores/cartStore'
 import useLanguageStore from '../stores/languageStore'
@@ -16,26 +16,45 @@ const ProductDetail = () => {
   const language = useLanguageStore((state) => state.language)
   const trackProductView = useAnalyticsStore((state) => state.trackProductView)
 
-  // Scroll to top on load
-  useEffect(() => {
-    window.scrollTo(0, 0)
-    if (product) {
-      trackProductView(product.id)
-    }
-  }, [product, trackProductView, slug])
-  
   // State
-  const [selectedSize, setSelectedSize] = useState(product?.sizes?.[0] || '')
-  const [selectedColor, setSelectedColor] = useState(product?.colors?.[0] || '')
+  const [selectedSize, setSelectedSize] = useState('')
+  const [selectedColor, setSelectedColor] = useState('')
   const [quantity, setQuantity] = useState(1)
   const [activeImage, setActiveImage] = useState(0)
   const [showSizeChart, setShowSizeChart] = useState(false)
-  
-  // Accordion State
   const [openSection, setOpenSection] = useState('description')
+
+  // 🚀 FIX 1: Reset all states and scroll to top when clicking a new product
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+    if (product) {
+      trackProductView(product.id)
+      // Force reset states so old product data doesn't bleed into the new one
+      setActiveImage(0)
+      setQuantity(1)
+      setSelectedSize(product.sizes?.[0] || '')
+      setSelectedColor(product.colors?.[0] || '')
+      setOpenSection('description')
+    }
+  }, [slug, product?.id, trackProductView]) // Re-run when the URL slug changes
 
   // Image Gallery Logic
   const allImages = product ? [product.image, ...(product.images || [])].filter(Boolean) : []
+
+  // 🚀 FIX 2: Mix Categories for "You Might Also Like"
+  const relatedProducts = useMemo(() => {
+    if (!product || !products) return [];
+    
+    // Get all products EXCEPT the one we are currently looking at
+    const otherProducts = products.filter(p => p.id !== product.id);
+    
+    // Shuffle them randomly to mix categories
+    const shuffled = otherProducts.sort(() => 0.5 - Math.random());
+    
+    // Return exactly 4
+    return shuffled.slice(0, 4);
+  }, [products, product?.id]);
+
 
   if (!product) {
     return (
@@ -63,12 +82,23 @@ const ProductDetail = () => {
     addItem({ ...product, selectedSize, selectedColor }, quantity)
   }
 
-  const relatedProducts = products
-    .filter(p => p.category === product.category && p.id !== product.id)
-    .slice(0, 4)
+  // 🚀 FIX 3: SEO Boosting Default Descriptions
+  const defaultDescriptionEn = `Upgrade your swimming experience with our premium ${product.name}. Sourced for durability, comfort, and top-tier performance, this is essential gear for both professional athletes and leisure swimmers in Rwanda. Order today from Kigali Swim Shop and enjoy 24-hour fast delivery anywhere in Kigali, complete with secure Mobile Money (MoMo) payments. Dive in with the best!`;
+  
+  const defaultDescriptionRw = `Gura ${product.nameRw || product.name} nziza cyane muri Kigali Swim Shop. Ibikoresho byizewe byo koga mu Rwanda, bikozwe kubw'ihumure n'igihe kirekire. Kwishyura na MoMo, na delivery yihuse mu masaha 24 i Kigali.`;
+
+  // Check if admin provided a description. If empty, use defaults.
+  const displayDescriptionEn = product.description && product.description.trim() !== '' 
+    ? product.description 
+    : defaultDescriptionEn;
+    
+  const displayDescriptionRw = product.descriptionRw && product.descriptionRw.trim() !== '' 
+    ? product.descriptionRw 
+    : defaultDescriptionRw;
 
   return (
-    <div className="bg-white min-h-screen pb-24 lg:pb-0">
+    // 🚀 FIX 1 (Part B): The key={product.id} forces React to destroy and rebuild the component, stopping image glitches!
+    <div key={product.id} className="bg-white min-h-screen pb-24 lg:pb-0 animate-fade-in">
       
       {/* 1. BREADCRUMBS */}
       <div className="bg-slate-50 border-b border-slate-100">
@@ -83,7 +113,6 @@ const ProductDetail = () => {
         </div>
       </div>
 
-      {/* 🛑 FIX: max-w-6xl forces the content to be centered and readable on large screens */}
       <div className="container mx-auto max-w-6xl px-0 lg:px-4 py-0 lg:py-12">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-0 lg:gap-12 xl:gap-16">
           
@@ -113,7 +142,6 @@ const ProductDetail = () => {
                  </div>
                )}
                
-               {/* Mobile Image Discount Badge */}
                {hasDiscount && (
                  <div className="absolute top-4 left-4 bg-gradient-to-r from-red-500 to-rose-600 text-white text-xs font-black px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1 border border-red-400/30">
                    <span>🔥</span>
@@ -130,7 +158,6 @@ const ProductDetail = () => {
                     alt={product.name} 
                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
                  />
-                 {/* Desktop Image Discount Badge */}
                  {hasDiscount && (
                    <div className="absolute top-6 left-6 bg-gradient-to-r from-red-500 to-rose-600 text-white text-sm font-black px-4 py-2 rounded-full shadow-xl flex items-center gap-1 border border-red-400/30">
                      <span>🔥</span>
@@ -169,7 +196,6 @@ const ProductDetail = () => {
                   {language === 'en' ? product.name : product.nameRw}
                 </h1>
                 
-                {/* 🚀 UPGRADED PRICE LAYOUT (0 Bug Fixed) */}
                 <div className="flex flex-wrap items-center gap-3 md:gap-4">
                   <div className="flex items-baseline gap-2 md:gap-3">
                     <span className="text-3xl lg:text-4xl font-black text-slate-900">{formatRWF(price)}</span>
@@ -180,7 +206,6 @@ const ProductDetail = () => {
                     )}
                   </div>
                   
-                  {/* Inline Discount Tag */}
                   {hasDiscount && (
                     <div className="hidden sm:flex bg-gradient-to-r from-red-50 text-red-600 border border-red-100 text-xs font-black px-2 py-1 rounded-md items-center gap-1">
                       -{discountPercentage}% OFF
@@ -266,7 +291,7 @@ const ProductDetail = () => {
                 </div>
               </div>
 
-              {/* 🚀 Desktop Add to Cart (Upgraded Gradient) */}
+              {/* Desktop Add to Cart */}
               <div className="hidden lg:block pt-6">
                 <button
                   onClick={handleAddToCart}
@@ -298,7 +323,8 @@ const ProductDetail = () => {
                   </button>
                   {openSection === 'description' && (
                     <div className="p-4 lg:p-5 text-slate-600 text-sm leading-relaxed border-t border-slate-50 bg-slate-50/50 animate-fade-in">
-                      {language === 'en' ? product.description : product.descriptionRw}
+                      {/* 🚀 Render the new dynamic descriptions */}
+                      {language === 'en' ? displayDescriptionEn : displayDescriptionRw}
                     </div>
                   )}
                 </div>
@@ -360,7 +386,7 @@ const ProductDetail = () => {
 
       </div>
 
-      {/* === 5. 🚀 MOBILE FLOATING BUY BAR (Upgraded Gradient) === */}
+      {/* === 5. MOBILE FLOATING BUY BAR === */}
       <div className="fixed bottom-0 left-0 right-0 p-3 sm:p-4 bg-white/90 backdrop-blur-md border-t border-slate-200 lg:hidden z-40 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] pb-safe">
         <div className="flex items-center gap-4 max-w-lg mx-auto">
           <div className="flex-1 pl-2">
