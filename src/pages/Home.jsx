@@ -1,5 +1,6 @@
+import { useMemo } from 'react' // 🚀 Added useMemo for performance
 import { Link } from 'react-router-dom'
-import { toast } from 'react-hot-toast' // 🚀 Import toast
+import { toast } from 'react-hot-toast'
 import useLanguageStore from '../stores/languageStore'
 import useCategoryStore from '../stores/categoryStore'
 import useProductStore from '../stores/productStore'
@@ -15,7 +16,38 @@ const Home = () => {
   const trackProductClick = useAnalyticsStore((state) => state.trackProductClick)
   const addItem = useCartStore((state) => state.addItem)
 
-  const featuredProducts = products.slice(0, 4)
+  // 🚀 MAJOR ADJUSTMENT: Round-Robin Algorithm to mix 20 products evenly across categories
+  const featuredProducts = useMemo(() => {
+    if (!products || products.length === 0) return [];
+
+    // Step 1: Group products by category
+    const groupedProducts = {};
+    products.forEach(product => {
+      const cat = product.category || 'other'; // Fallback just in case
+      if (!groupedProducts[cat]) groupedProducts[cat] = [];
+      groupedProducts[cat].push(product);
+    });
+
+    // Step 2: Pick 1 from each category in a loop until we reach 20
+    const mixedList = [];
+    const categoryKeys = Object.keys(groupedProducts);
+    let itemsAvailable = true;
+
+    while (mixedList.length < 20 && itemsAvailable) {
+      itemsAvailable = false;
+      for (const key of categoryKeys) {
+        if (mixedList.length >= 20) break; // Stop exactly at 20
+        
+        if (groupedProducts[key].length > 0) {
+          mixedList.push(groupedProducts[key].shift()); // Take the first item in this category's list
+          itemsAvailable = true; // We found an item, keep the loop going
+        }
+      }
+    }
+
+    return mixedList;
+  }, [products]);
+  
   const testimonials = [
     {
       name: 'Jean Paul',
@@ -40,13 +72,10 @@ const Home = () => {
     }
   ]
 
-  // 🚀 Helper to handle adding with toast feedback
   const handleAddWithToast = (e, product) => {
     e.preventDefault()
     e.stopPropagation()
     addItem(product)
-    // The cartStore already has toast logic, but we can add an extra specific one if needed
-    // or let the store handle it to avoid double-toasting.
   }
 
   return (
@@ -111,36 +140,37 @@ const Home = () => {
         </div>
       </section>
 
-      {/* === 2. CATEGORIES SECTION === */}
-      <section className="relative py-10 lg:py-20 bg-slate-50">
+      {/* === 2. CATEGORIES SECTION (ADJUSTMENT 1: REDUCED SIZE) === */}
+      {/* Reduced py-10 to py-8, reduced h-64 to h-32/h-40, shrunk icons */}
+      <section className="relative py-8 lg:py-12 bg-slate-50">
         <div className="absolute top-0 left-0 right-0 -mt-1 w-full overflow-hidden leading-[0]">
           <svg className="relative block w-[calc(100%+1.3px)] h-[60px] md:h-[120px]" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 120" preserveAspectRatio="none">
             <path d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V0H0V27.35A600.21,600.21,0,0,0,321.39,56.44Z" className="fill-slate-900"></path>
           </svg>
         </div>
 
-        <div className="container mx-auto px-4 relative z-10 pt-12">
-          <h2 className="text-3xl font-bold text-center mb-8 lg:mb-12 text-gray-800">
+        <div className="container mx-auto px-4 relative z-10 pt-8">
+          <h2 className="text-2xl md:text-3xl font-bold text-center mb-6 lg:mb-8 text-gray-800">
             {language === 'en' ? 'Find Your Gear' : 'Hitamo Ibikoresho'}
           </h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6 lg:gap-8">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-5">
             {categories.map((category) => (
               <Link
                 key={category.id}
                 to={`/products?category=${category.id}`}
-                className="group relative bg-white rounded-2xl md:rounded-3xl p-4 md:p-6 shadow-lg shadow-slate-200/50 hover:shadow-2xl hover:shadow-sky-200/50 transition-all duration-300 hover:-translate-y-2 border border-slate-100 overflow-hidden flex flex-col items-center justify-center text-center h-40 md:h-64"
+                className="group relative bg-white rounded-2xl md:rounded-2xl p-3 md:p-4 shadow-sm hover:shadow-xl hover:shadow-sky-100/50 transition-all duration-300 hover:-translate-y-1 border border-slate-100 overflow-hidden flex flex-col items-center justify-center text-center h-28 md:h-40"
               >
                 <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-sky-50 to-white opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                <div className="relative z-10 mb-3 md:mb-6 transform transition-transform duration-500 group-hover:scale-110 group-hover:rotate-6">
+                <div className="relative z-10 mb-2 md:mb-4 transform transition-transform duration-500 group-hover:scale-110 group-hover:rotate-6">
                   {category.image ? (
-                    <div className="w-16 h-16 md:w-24 md:h-24 rounded-full p-1 bg-gradient-to-br from-sky-300 to-primary-500">
-                      <LazyImage src={category.image} alt={category.name} className="w-full h-full rounded-full object-cover border-2 md:border-4 border-white" />
+                    <div className="w-12 h-12 md:w-16 md:h-16 rounded-full p-0.5 bg-gradient-to-br from-sky-300 to-primary-500">
+                      <LazyImage src={category.image} alt={category.name} className="w-full h-full rounded-full object-cover border-2 border-white" />
                     </div>
                   ) : (
-                    <div className="w-16 h-16 md:w-24 md:h-24 rounded-full bg-sky-100 text-sky-600 flex items-center justify-center text-3xl md:text-5xl shadow-inner">{category.icon}</div>
+                    <div className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-sky-100 text-sky-600 flex items-center justify-center text-2xl md:text-3xl shadow-inner">{category.icon}</div>
                   )}
                 </div>
-                <h3 className="relative z-10 font-bold text-slate-700 text-sm md:text-lg group-hover:text-primary-600 transition-colors">
+                <h3 className="relative z-10 font-bold text-slate-700 text-xs md:text-sm group-hover:text-primary-600 transition-colors">
                   {language === 'en' ? category.name : category.nameRw}
                 </h3>
               </Link>
@@ -150,24 +180,26 @@ const Home = () => {
       </section>
 
       {/* === 3. FEATURED PRODUCTS === */}
-      <section className="py-10 lg:py-24 bg-slate-50 relative">
+      <section className="py-10 lg:py-16 bg-slate-50 relative">
         <div className="container mx-auto px-4">
-          <div className="flex flex-col md:flex-row items-end justify-between mb-8 lg:mb-12 gap-4">
+          
+          <div className="flex flex-col sm:flex-row sm:items-end items-start justify-between mb-8 gap-4 w-full">
             <div className="text-left">
-              <span className="text-sky-500 font-bold tracking-wider uppercase text-sm mb-2 block">
+              <span className="text-sky-500 font-bold tracking-wider uppercase text-xs md:text-sm mb-1 block">
                 {language === 'en' ? 'Curated Collection' : 'Ikusanyirizo Ryatoranijwe'}
               </span>
-              <h2 className="text-3xl md:text-4xl font-black text-slate-800">
+              <h2 className="text-2xl md:text-4xl font-black text-slate-800">
                 {language === 'en' ? 'Trending Equipment' : 'Ibigezweho'}
               </h2>
             </div>
-            <Link to="/products" className="group flex items-center gap-2 text-slate-600 hover:text-sky-600 transition-colors font-medium">
+            <Link to="/products" className="group flex items-center gap-2 text-slate-600 hover:text-sky-600 transition-colors font-medium text-sm md:text-base">
               <span>{language === 'en' ? 'View All' : 'Reba Byose'}</span>
-              <svg className="w-5 h-5 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
+              <svg className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
             </Link>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-6">
+            {/* 🚀 Rendered up to 20 precisely mixed cards */}
             {featuredProducts.map((product) => {
               const price = Number(product.price) || 0;
               const originalPrice = Number(product.originalPrice) || 0;
@@ -251,13 +283,13 @@ const Home = () => {
       </section>
 
       {/* === 4. TRUST BADGES === */}
-      <section className="py-12 bg-white">
+      <section className="py-8 bg-white border-t border-slate-100">
         <div className="container mx-auto px-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-            <div><div className="text-4xl mb-2">🚚</div><h3 className="font-semibold text-gray-800">{language === 'en' ? 'Fast Delivery' : 'Gutanga Vuba'}</h3><p className="text-sm text-gray-600">{language === 'en' ? '24-48 hours' : 'Amasaha 24-48'}</p></div>
-            <div><div className="text-4xl mb-2">💳</div><h3 className="font-semibold text-gray-800">{language === 'en' ? 'Secure Payment' : 'Kwishyura Bwite'}</h3><p className="text-sm text-gray-600">{language === 'en' ? 'Multiple options' : 'Amahitamo menshi'}</p></div>
-            <div><div className="text-4xl mb-2">↩️</div><h3 className="font-semibold text-gray-800">{language === 'en' ? 'Easy Returns' : 'Gusubiza Byoroshye'}</h3><p className="text-sm text-gray-600">{language === 'en' ? '7-day policy' : 'Iminsi 7'}</p></div>
-            <div><div className="text-4xl mb-2">⭐</div><h3 className="font-semibold text-gray-800">{language === 'en' ? 'Quality Guaranteed' : 'Ubwoba Bw\'ubwoba'}</h3><p className="text-sm text-gray-600">{language === 'en' ? 'Authentic' : 'Iby\'ukuri'}</p></div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+            <div><div className="text-2xl md:text-3xl mb-1.5">🚚</div><h3 className="font-semibold text-sm md:text-base text-gray-800">{language === 'en' ? 'Fast Delivery' : 'Gutanga Vuba'}</h3><p className="text-xs text-gray-500">{language === 'en' ? '24-48 hours' : 'Amasaha 24-48'}</p></div>
+            <div><div className="text-2xl md:text-3xl mb-1.5">💳</div><h3 className="font-semibold text-sm md:text-base text-gray-800">{language === 'en' ? 'Secure Payment' : 'Kwishyura Bwite'}</h3><p className="text-xs text-gray-500">{language === 'en' ? 'Multiple options' : 'Amahitamo menshi'}</p></div>
+            <div><div className="text-2xl md:text-3xl mb-1.5">↩️</div><h3 className="font-semibold text-sm md:text-base text-gray-800">{language === 'en' ? 'Easy Returns' : 'Gusubiza Byoroshye'}</h3><p className="text-xs text-gray-500">{language === 'en' ? '7-day policy' : 'Iminsi 7'}</p></div>
+            <div><div className="text-2xl md:text-3xl mb-1.5">⭐</div><h3 className="font-semibold text-sm md:text-base text-gray-800">{language === 'en' ? 'Quality Guaranteed' : 'Ubwoba Bw\'ubwoba'}</h3><p className="text-xs text-gray-500">{language === 'en' ? 'Authentic' : 'Iby\'ukuri'}</p></div>
           </div>
         </div>
       </section>
