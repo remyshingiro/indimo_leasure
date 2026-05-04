@@ -3,42 +3,272 @@
   
   <url>
     <loc>https://kigaliswimshop.online</loc>
-    <lastmod>2026-02-20</lastmod>
+    <lastmod>2026-05-04</lastmod>
     <priority>1.0</priority>
   </url>
   <url>
     <loc>https://kigaliswimshop.online/products</loc>
-    <lastmod>2026-02-20</lastmod>
+    <lastmod>2026-05-04</lastmod>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://kigaliswimshop.online/cart</loc>
-    <lastmod>2026-02-20</lastmod>
+    <lastmod>2026-05-04</lastmod>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://kigaliswimshop.online/about</loc>
-    <lastmod>2026-02-20</lastmod>
+    <lastmod>2026-05-04</lastmod>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://kigaliswimshop.online/contact</loc>
-    <lastmod>2026-02-20</lastmod>
+    <lastmod>2026-05-04</lastmod>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://kigaliswimshop.online/profile</loc>
-    <lastmod>2026-02-20</lastmod>
+    <lastmod>2026-05-04</lastmod>
     <priority>0.6</priority>
   </url>
   <url>
+    <loc>https://kigaliswimshop.online/products/kids-swimming-suit</loc>
+    <lastmod>2026-05-04</lastmod>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kigaliswimshop.online/products/beach-balls-pool-balls</loc>
+    <lastmod>2026-05-04</lastmod>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kigaliswimshop.online/products/swimming-arm-floats</loc>
+    <lastmod>2026-05-04</lastmod>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kigaliswimshop.online/products/men-swimming-goggles</loc>
+    <lastmod>2026-05-04</lastmod>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kigaliswimshop.online/products/bikini-swim-suit</loc>
+    <lastmod>2026-05-04</lastmod>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kigaliswimshop.online/products/swimming-ring-pool-float</loc>
+    <lastmod>2026-05-04</lastmod>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kigaliswimshop.online/products/big-swim-caps</loc>
+    <lastmod>2026-05-04</lastmod>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kigaliswimshop.online/products/swimming-shorts-for-men</loc>
+    <lastmod>2026-05-04</lastmod>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kigaliswimshop.online/products/swimming-goggles</loc>
+    <lastmod>2026-05-04</lastmod>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kigaliswimshop.online/products/beach-balls-pool-balls</loc>
+    <lastmod>2026-05-04</lastmod>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kigaliswimshop.online/products/swimming-life-jacket-vest</loc>
+    <lastmod>2026-05-04</lastmod>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kigaliswimshop.online/products/women-swim-suits</loc>
+    <lastmod>2026-05-04</lastmod>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kigaliswimshop.online/products/swimming-goggles</loc>
+    <lastmod>2026-05-04</lastmod>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kigaliswimshop.online/products/swimming-goggles</loc>
+    <lastmod>2026-05-04</lastmod>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kigaliswimshop.online/products/swimming-goggles</loc>
+    <lastmod>2026-05-04</lastmod>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kigaliswimshop.online/products/swimming-goggles</loc>
+    <lastmod>2026-05-04</lastmod>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kigaliswimshop.online/products/swimming-vest</loc>
+    <lastmod>2026-05-04</lastmod>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kigaliswimshop.online/products/men-swimming-suits</loc>
+    <lastmod>2026-05-04</lastmod>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kigaliswimshop.online/products/men-swimming-suits</loc>
+    <lastmod>2026-05-04</lastmod>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kigaliswimshop.online/products/swimming-goggles</loc>
+    <lastmod>2026-05-04</lastmod>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kigaliswimshop.online/products/swimming-googles</loc>
+    <lastmod>2026-05-04</lastmod>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kigaliswimshop.online/products/kids-swimming-goggles</loc>
+    <lastmod>2026-05-04</lastmod>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kigaliswimshop.online/products/swimming-googles-cap</loc>
+    <lastmod>2026-05-04</lastmod>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kigaliswimshop.online/products/kids-swimming-pool-seat-ring</loc>
+    <lastmod>2026-05-04</lastmod>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kigaliswimshop.online/products/swimming-shorts-for-men</loc>
+    <lastmod>2026-05-04</lastmod>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kigaliswimshop.online/products/men-swimming-goggles</loc>
+    <lastmod>2026-05-04</lastmod>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://kigaliswimshop.online/products/caps-for-kids</loc>
-    <lastmod>2026-02-20</lastmod>
+    <lastmod>2026-05-04</lastmod>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kigaliswimshop.online/products/swimming-vest</loc>
+    <lastmod>2026-05-04</lastmod>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kigaliswimshop.online/products/swimming-ring-pool-float</loc>
+    <lastmod>2026-05-04</lastmod>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kigaliswimshop.online/products/swimming-vest</loc>
+    <lastmod>2026-05-04</lastmod>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kigaliswimshop.online/products/swimming-fins</loc>
+    <lastmod>2026-05-04</lastmod>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kigaliswimshop.online/products/swimming-goggles</loc>
+    <lastmod>2026-05-04</lastmod>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kigaliswimshop.online/products/swimming-fins</loc>
+    <lastmod>2026-05-04</lastmod>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kigaliswimshop.online/products/swimming-goggles-women-</loc>
+    <lastmod>2026-05-04</lastmod>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kigaliswimshop.online/products/kids-swimming-goggles</loc>
+    <lastmod>2026-05-04</lastmod>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kigaliswimshop.online/products/swimming-life-jacket-vest</loc>
+    <lastmod>2026-05-04</lastmod>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kigaliswimshop.online/products/swimming-fins-kids</loc>
+    <lastmod>2026-05-04</lastmod>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kigaliswimshop.online/products/swim-suit-women</loc>
+    <lastmod>2026-05-04</lastmod>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kigaliswimshop.online/products/swimming-arm-floats</loc>
+    <lastmod>2026-05-04</lastmod>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kigaliswimshop.online/products/swimming-goggles-caps</loc>
+    <lastmod>2026-05-04</lastmod>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kigaliswimshop.online/products/swimming-life-jacket-vest</loc>
+    <lastmod>2026-05-04</lastmod>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://kigaliswimshop.online/products/fasf</loc>
-    <lastmod>2026-02-20</lastmod>
+    <lastmod>2026-05-04</lastmod>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kigaliswimshop.online/products/kids-swimming-pool-seat-ring</loc>
+    <lastmod>2026-05-04</lastmod>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kigaliswimshop.online/products/men-swimming-suits</loc>
+    <lastmod>2026-05-04</lastmod>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kigaliswimshop.online/products/men-swimming-goggles</loc>
+    <lastmod>2026-05-04</lastmod>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kigaliswimshop.online/products/small-caps</loc>
+    <lastmod>2026-05-04</lastmod>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kigaliswimshop.online/products/men-swimming-goggles</loc>
+    <lastmod>2026-05-04</lastmod>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kigaliswimshop.online/products/kids-swimming-goggles</loc>
+    <lastmod>2026-05-04</lastmod>
     <priority>0.8</priority>
   </url>
 </urlset>

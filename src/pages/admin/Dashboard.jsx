@@ -79,7 +79,7 @@ const AdminDashboard = () => {
     }
   }
 
-  const handleSaveProduct = async () => {
+const handleSaveProduct = async () => {
     if (!productForm.name || !productForm.price) return toast.error('Name and Price required')
     if (!productForm.category) return toast.error('Please select a category')
     
@@ -113,7 +113,20 @@ const AdminDashboard = () => {
         await addProduct({ ...productData, createdAt: new Date().toISOString() });
         toast.success('New product added!');
       }
+      
       setShowProductModal(false);
+
+      // 👇 ========================================== 👇
+      // 🚀 CLOUDFLARE SITEMAP TRIGGER
+      // ==========================================
+      const webhookUrl = import.meta.env.VITE_DEPLOY_WEBHOOK_URL;
+      if (webhookUrl) {
+        fetch(webhookUrl, { method: 'POST' })
+          .then(() => console.log('Cloudflare rebuild triggered. Sitemap is updating!'))
+          .catch((err) => console.error('Failed to trigger rebuild:', err));
+      }
+      // 👆 ========================================== 👆
+
     } catch (error) {
       toast.error("Error: " + error.message);
     } finally {
