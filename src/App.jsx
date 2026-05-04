@@ -145,6 +145,8 @@ function App() {
                   <Route path="/signup" element={<SignUp />} />
                   <Route path="/login" element={<SignIn />} />
                   <Route path="/profile" element={<Profile />} />
+                  <Route path="/blog" element={<Blog/>}/>
+                  <Route path='/blog/:slug' element={<BlogPost/>}/>
                   <Route path="/wishlist" element={<div className="container mx-auto px-4 py-12 text-center"><h1 className="text-2xl font-bold">Wishlist Coming Soon</h1></div>} />
                   <Route path="/admin" element={
                     <ProtectedRoute requireAdmin={true}>
