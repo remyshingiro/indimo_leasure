@@ -12,7 +12,8 @@ import useProductStore from './stores/productStore'
 import useCategoryStore from './stores/categoryStore' 
 import { getSessionId } from './utils/analytics'
 import ProtectedRoute from './components/ProtectedRoute'
-
+import Blog from './pages/Blog';
+import BlogPost from './pages/BlogPost';
 // Lazy load pages
 const Home = lazy(() => import('./pages/Home'))
 const Products = lazy(() => import('./pages/Products'))
