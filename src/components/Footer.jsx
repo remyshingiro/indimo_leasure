@@ -95,7 +95,7 @@ const Footer = () => {
       rights: 'All rights reserved',
       address: 'Kigali, Rwanda',
       phone: '+250 784 154 697',
-      email: 'kigaliswimshop@gmail.com'
+      email: 'director@kigaliswimshop.online'
     },
     rw: {
       cta: "Witeguye Koga?",
@@ -110,9 +110,9 @@ const Footer = () => {
       paymentMethods: 'Uburyo bwo kwishura',
       followUs: 'Dukurikire',
       rights: 'Uburenganzira bwose burabagirwa',
-      address: 'Kigali, u Rwanda',
+      address: 'Kigali, Rwanda',
       phone: '+250 784 154 697',
-      email: 'kigaliswimshop@gmail.com'
+      email: 'director@kigaliswimshop.online'
     }
   }
 
