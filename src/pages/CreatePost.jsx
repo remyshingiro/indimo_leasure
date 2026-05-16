@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { db } from '../config/firebase';  
+import { db } from '../config/firebase'; // Adjust path if needed
 import { collection, addDoc } from 'firebase/firestore';
 import toast from 'react-hot-toast';
 
 const CreatePost = () => {
   const navigate = useNavigate();
   const [isSaving, setIsSaving] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);  
+  const [isUploading, setIsUploading] = useState(false); // 🚀 NEW: Upload state
   const [postForm, setPostForm] = useState({ 
     title: '', 
     slug: '', 

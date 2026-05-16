@@ -12,7 +12,9 @@ import useProductStore from './stores/productStore'
 import useCategoryStore from './stores/categoryStore' 
 import { getSessionId } from './utils/analytics'
 import ProtectedRoute from './components/ProtectedRoute'
-
+import Blog from './pages/Blog';
+import BlogPost from './pages/BlogPost';
+import CreatePost from './pages/CreatePost';
 // Lazy load pages
 const Home = lazy(() => import('./pages/Home'))
 const Products = lazy(() => import('./pages/Products'))
@@ -144,12 +146,20 @@ function App() {
                   <Route path="/signup" element={<SignUp />} />
                   <Route path="/login" element={<SignIn />} />
                   <Route path="/profile" element={<Profile />} />
+                  <Route path="/blog" element={<Blog/>}/>
+                  <Route path='/blog/:slug' element={<BlogPost/>}/>
+                  
                   <Route path="/wishlist" element={<div className="container mx-auto px-4 py-12 text-center"><h1 className="text-2xl font-bold">Wishlist Coming Soon</h1></div>} />
                   <Route path="/admin" element={
                     <ProtectedRoute requireAdmin={true}>
                       <AdminDashboard />
                     </ProtectedRoute>
                   } />
+                  <Route path='/admin/create-post' element={
+                    <ProtectedRoute>
+                      <CreatePost/>
+                    </ProtectedRoute>
+                  }/>
                 </Routes>
               </Suspense>
             </MainLayout>

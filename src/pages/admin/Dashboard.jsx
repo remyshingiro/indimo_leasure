@@ -8,8 +8,10 @@ import LazyImage from '../../components/LazyImage'
 import { uploadToCloudinary } from '../../utils/uploadService'
 import { collection, getDocs } from 'firebase/firestore'
 import { db } from '../../config/firebase'
+import { useNavigate } from 'react-router-dom';
 
 const AdminDashboard = () => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview')
   const [showProductModal, setShowProductModal] = useState(false)
   const [showCategoryModal, setShowCategoryModal] = useState(false)
@@ -213,11 +215,30 @@ const handleSaveProduct = async () => {
               </button>
             ))}
           </nav>
-          <div className="mt-8 px-4">
-            <button onClick={async () => {
-              await seedProducts();
-              toast.success('Mock data uploaded');
-            }} className="w-full py-3 bg-green-50 text-green-700 font-black rounded-xl text-[10px] uppercase tracking-widest hover:bg-green-100 border border-green-200 transition">🚀 Seed Data</button>
+          {/* BOTTOM SIDEBAR ACTIONS */}
+          <div className="mt-8 px-4 flex flex-col gap-3">
+            
+            {/* 🚀 NEW: Quick Create Blog Post Button */}
+            <button 
+              onClick={() => {
+                navigate('/admin/create-post');
+                setIsMobileMenuOpen(false); // Closes menu on mobile
+              }} 
+              className="w-full py-3 bg-sky-600 text-white font-black rounded-xl text-[10px] uppercase tracking-widest hover:bg-sky-700 shadow-lg shadow-sky-200 transition flex items-center justify-center gap-2"
+            >
+              <span className="text-sm">✍️</span> Write Article
+            </button>
+
+            {/* YOUR EXISTING SEED DATA BUTTON */}
+            <button 
+              onClick={async () => {
+                await seedProducts();
+                toast.success('Mock data uploaded');
+              }} 
+              className="w-full py-3 bg-green-50 text-green-700 font-black rounded-xl text-[10px] uppercase tracking-widest hover:bg-green-100 border border-green-200 transition"
+            >
+              🚀 Seed Data
+            </button>
           </div>
         </div>
       </aside>
