@@ -27,8 +27,8 @@ const BlogPost = () => {
     <main className="bg-white pb-24">
       {/* Article Header */}
       <header className="relative w-full h-[40vh] md:h-[60vh] bg-slate-900">
-        <LazyImage src={post.image} alt={post.title} className="absolute inset-0 w-full h-full object-cover opacity-50" />
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/40 to-transparent" />
+        <LazyImage src={post.image} alt={post.title} className="absolute inset-0 w-full h-full object-cover  " />
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90  to-transparent" />
         <div className="absolute bottom-0 left-0 right-0 p-6 md:p-12 container mx-auto max-w-4xl z-10">
           <span className="text-sky-400 font-black tracking-widest text-xs uppercase mb-4 block">
             {post.category}
