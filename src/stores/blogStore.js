@@ -22,8 +22,7 @@ const useBlogStore = create((set) => ({
         id: doc.id,
         ...doc.data()
       }));
-      
-      set({ posts: postsData, isLoading: false })
+      console.log("FIREBASE RETURNED THESE POSTS:", postsData);set({ posts: postsData, isLoading: false })
     } catch (error) {
       console.error("Error fetching blog posts:", error);
       set({ error: error.message, isLoading: false })

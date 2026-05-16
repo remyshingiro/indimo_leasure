@@ -7,6 +7,7 @@ import toast from 'react-hot-toast';
 const CreatePost = () => {
   const navigate = useNavigate();
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false); // 🚀 NEW: Upload state
   const [postForm, setPostForm] = useState({ 
     title: '', 
     slug: '', 
@@ -15,6 +16,39 @@ const CreatePost = () => {
     content: '', 
     status: 'published' 
   });
+
+  // 🚀 NEW: Cloudinary Upload Handler
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET);
+
+    try {
+      const response = await fetch(
+        `https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/image/upload`, 
+        { method: 'POST', body: formData }
+      );
+      
+      const data = await response.json();
+      
+      if (data.secure_url) {
+        setPostForm({ ...postForm, image: data.secure_url });
+        toast.success('Image uploaded successfully! 📸');
+      } else {
+        throw new Error('Upload failed');
+      }
+    } catch (error) {
+      toast.error('Failed to upload image. Check your internet connection.');
+      console.error(error);
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   const handleSavePost = async () => {
     if (!postForm.title || !postForm.content) return toast.error('Title and Content are required');
@@ -71,7 +105,7 @@ const CreatePost = () => {
         </div>
         <button 
           onClick={handleSavePost} 
-          disabled={isSaving}
+          disabled={isSaving || isUploading}
           className="bg-slate-900 hover:bg-slate-800 text-white px-8 py-2.5 rounded-xl font-black uppercase tracking-widest shadow-lg transition-all disabled:opacity-50"
         >
           {isSaving ? 'Publishing...' : 'Publish Post 🚀'}
@@ -131,19 +165,49 @@ const CreatePost = () => {
               </select>
             </div>
 
+            {/* 🚀 NEW: Cloudinary Image Dropzone */}
             <div>
-              <label className="block text-xs font-bold text-slate-500 mb-2">Cover Image URL</label>
-              <input 
-                type="text" 
-                value={postForm.image}
-                onChange={(e) => setPostForm({...postForm, image: e.target.value})}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 outline-none text-sm"
-                placeholder="https://..."
-              />
-              {postForm.image && (
-                <img src={postForm.image} alt="Preview" className="mt-3 w-full h-32 object-cover rounded-xl border border-slate-200" />
+              <label className="block text-xs font-bold text-slate-500 mb-2">Cover Image</label>
+              
+              {!postForm.image ? (
+                <div className="flex items-center justify-center w-full">
+                  <label className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-xl cursor-pointer transition-all ${isUploading ? 'border-sky-400 bg-sky-50' : 'border-slate-300 bg-slate-50 hover:bg-slate-100 hover:border-slate-400'}`}>
+                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                      <span className={`text-2xl mb-2 ${isUploading ? 'animate-bounce' : ''}`}>
+                        {isUploading ? '⏳' : '📸'}
+                      </span>
+                      <p className="text-sm text-slate-500 font-bold">
+                        {isUploading ? 'Uploading to Cloudinary...' : 'Click to upload image'}
+                      </p>
+                    </div>
+                    <input 
+                      type="file" 
+                      className="hidden" 
+                      accept="image/png, image/jpeg, image/webp" 
+                      onChange={handleImageUpload} 
+                      disabled={isUploading} 
+                    />
+                  </label>
+                </div>
+              ) : (
+                <div className="relative mt-2 group">
+                  <img 
+                    src={postForm.image} 
+                    alt="Cover Preview" 
+                    className="w-full h-40 object-cover rounded-xl border border-slate-200 shadow-sm" 
+                  />
+                  <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl flex items-center justify-center">
+                    <button 
+                      onClick={() => setPostForm({...postForm, image: ''})} 
+                      className="bg-white text-red-500 px-4 py-2 rounded-lg shadow-lg font-black text-xs uppercase tracking-widest hover:scale-105 transition-transform"
+                    >
+                      Remove Image
+                    </button>
+                  </div>
+                </div>
               )}
             </div>
+            
           </div>
         </div>
 
